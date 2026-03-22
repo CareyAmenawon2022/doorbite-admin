@@ -2,7 +2,7 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import axios from 'axios';
 
 
-const API = 'https://scintillating-peace-production-f45d.up.railway.app/api';
+const API = 'https://api.doorbite.ng/api';
 
 const api = axios.create({ baseURL: API });
 api.interceptors.request.use(c => { const t=localStorage.getItem('a_token'); if(t) c.headers.Authorization=`Bearer ${t}`; return c; });
