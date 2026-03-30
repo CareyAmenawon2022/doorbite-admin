@@ -484,6 +484,202 @@ function Restaurants() {
   );
 }
 
+
+
+// ── ADD THIS COMPONENT to admin-web/src/App.js ────────────────────────────────
+// Place after the Categories component and before AppContent
+
+function Riders() {
+  const [pending, setPending] = useState([]);
+  const [approved, setApproved] = useState([]);
+  const [tab, setTab] = useState('pending');
+  const [loading, setLoading] = useState(true);
+  const [rejectModal, setRejectModal] = useState(null); // rider to reject
+  const [rejectReason, setRejectReason] = useState('');
+
+  const loadAll = () => {
+    setLoading(true);
+    Promise.all([
+      api.get('/riders/pending'),
+      api.get('/riders/all'),
+    ]).then(([p, a]) => {
+      setPending(p.data);
+      setApproved(a.data.filter(r => r.isApproved));
+    }).catch(() => {}).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadAll(); }, []);
+
+  const approve = async (id) => {
+    await api.patch(`/riders/${id}/approve`);
+    const rider = pending.find(r => r._id === id);
+    setPending(prev => prev.filter(r => r._id !== id));
+    if (rider) setApproved(prev => [{ ...rider, isApproved: true }, ...prev]);
+  };
+
+  const reject = async () => {
+    if (!rejectReason.trim()) return alert('Please provide a rejection reason');
+    await api.patch(`/riders/${rejectModal._id}/reject`, { reason: rejectReason });
+    setPending(prev => prev.filter(r => r._id !== rejectModal._id));
+    setRejectModal(null);
+    setRejectReason('');
+  };
+
+  const suspend = async (id, isSuspended) => {
+    await api.patch(`/users/${id}/suspend`, { isSuspended: !isSuspended });
+    setApproved(prev => prev.map(r => r._id === id ? { ...r, isSuspended: !isSuspended } : r));
+  };
+
+  return (
+    <div style={{ padding: 28, overflowY: 'auto', flex: 1 }}>
+      <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>Riders 🏍️</h1>
+      <p style={{ color: C.gray, marginBottom: 20 }}>Verify rider identities and approve accounts before they can deliver.</p>
+
+      {/* Stats */}
+      <div style={{ display: 'flex', gap: 14, marginBottom: 24 }}>
+        <div style={{ ...card, marginBottom: 0, flex: 1, borderTop: `3px solid ${C.warning}` }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: 0.5 }}>PENDING APPROVAL</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: C.warning, margin: '4px 0' }}>{pending.length}</div>
+          <div style={{ fontSize: 11, color: C.gray }}>Awaiting review</div>
+        </div>
+        <div style={{ ...card, marginBottom: 0, flex: 1, borderTop: `3px solid ${C.success}` }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: 0.5 }}>APPROVED</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: C.success, margin: '4px 0' }}>{approved.filter(r => !r.isSuspended).length}</div>
+          <div style={{ fontSize: 11, color: C.gray }}>Active riders</div>
+        </div>
+        <div style={{ ...card, marginBottom: 0, flex: 1, borderTop: `3px solid ${C.error}` }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: 0.5 }}>SUSPENDED</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: C.error, margin: '4px 0' }}>{approved.filter(r => r.isSuspended).length}</div>
+          <div style={{ fontSize: 11, color: C.gray }}>Suspended riders</div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        {[['pending', `Pending (${pending.length})`], ['approved', `Approved (${approved.length})`]].map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)} style={{ ...btn(tab === key ? C.primary : '#fff'), color: tab === key ? '#fff' : C.gray, border: `1px solid ${C.border}`, borderRadius: 20 }}>{label}</button>
+        ))}
+      </div>
+
+      {loading ? <div style={{ textAlign: 'center', padding: 40, color: C.gray }}>Loading...</div> :
+        tab === 'pending' ? (
+          pending.length === 0 ? (
+            <div style={{ ...card, textAlign: 'center', padding: 60 }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+              <p style={{ color: C.gray, fontSize: 16, fontWeight: 600 }}>No pending rider applications</p>
+            </div>
+          ) : pending.map(rider => (
+            <div key={rider._id} style={{ ...card, borderLeft: `4px solid ${C.warning}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 24, background: C.warning + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, border: `2px solid ${C.warning}44` }}>
+                      {rider.name?.[0]?.toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 17 }}>{rider.name}</div>
+                      <div style={{ color: C.gray, fontSize: 13 }}>{rider.email}</div>
+                    </div>
+                    <span style={{ ...badge(C.warning), marginLeft: 4 }}>Pending</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                    {[
+                      ['📞 Phone', rider.phone || '—'],
+                      ['🏍️ Vehicle', rider.vehicleType || '—'],
+                      ['🪪 ID Type', rider.idType || 'NIN'],
+                      ['🔢 ID Number', rider.ninNumber || '—'],
+                      ['📅 Applied', new Date(rider.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })],
+                      ['📧 Email', rider.email],
+                    ].map(([label, value]) => (
+                      <div key={label} style={{ background: C.bg, borderRadius: 8, padding: '8px 12px' }}>
+                        <div style={{ fontSize: 11, color: C.gray, fontWeight: 700 }}>{label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {rider.idDocumentUrl && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 11, color: C.gray, fontWeight: 700, marginBottom: 4 }}>📎 UPLOADED ID DOCUMENT</div>
+                      <a href={rider.idDocumentUrl} target="_blank" rel="noreferrer"
+                        style={{ color: C.primary, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+                        🔗 View Document →
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginLeft: 20, flexShrink: 0 }}>
+                  <button style={{ ...btn(C.success), padding: '10px 24px', fontSize: 14 }} onClick={() => approve(rider._id)}>✓ Approve</button>
+                  <button style={{ ...btn('#fff'), color: C.error, border: `1px solid ${C.error}`, padding: '10px 24px', fontSize: 14 }}
+                    onClick={() => { setRejectModal(rider); setRejectReason(''); }}>✕ Reject</button>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          approved.length === 0 ? (
+            <div style={{ ...card, textAlign: 'center', padding: 60 }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🏍️</div>
+              <p style={{ color: C.gray, fontSize: 16, fontWeight: 600 }}>No approved riders yet</p>
+            </div>
+          ) : approved.map(rider => (
+            <div key={rider._id} style={{ ...card }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 22, background: C.success + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, border: `2px solid ${C.success}44` }}>
+                    {rider.name?.[0]?.toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                      <strong style={{ fontSize: 15 }}>{rider.name}</strong>
+                      <span style={badge(rider.isSuspended ? C.error : C.success)}>{rider.isSuspended ? 'Suspended' : 'Active'}</span>
+                      <span style={badge(rider.isOnline ? C.success : C.gray)}>{rider.isOnline ? '● Online' : '● Offline'}</span>
+                    </div>
+                    <div style={{ color: C.gray, fontSize: 12 }}>{rider.email} · {rider.phone}</div>
+                    <div style={{ color: C.gray, fontSize: 12, marginTop: 2 }}>
+                      {rider.vehicleType} · {rider.idType}: {rider.ninNumber} · ⭐ {rider.rating?.toFixed(1)} · {rider.totalTrips} trips · ₦{rider.totalEarnings?.toLocaleString()} earned
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <button style={btn(rider.isSuspended ? C.success : C.error)} onClick={() => suspend(rider._id, rider.isSuspended)}>
+                    {rider.isSuspended ? 'Unsuspend' : 'Suspend'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )
+      }
+
+      {/* Reject Modal */}
+      {rejectModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={e => e.target === e.currentTarget && setRejectModal(null)}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: 32, width: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>✕ Reject Rider Application</h2>
+            <p style={{ color: C.gray, fontSize: 13, marginBottom: 20 }}>{rejectModal.name} · {rejectModal.email}</p>
+            <label style={{ fontSize: 12, fontWeight: 700, color: C.gray, letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>REJECTION REASON *</label>
+            <textarea
+              style={{ ...inp, height: 100, resize: 'vertical', fontFamily: 'inherit' }}
+              placeholder="e.g. Invalid NIN number provided, ID document unclear, does not meet age requirement..."
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+            />
+            <p style={{ color: C.gray, fontSize: 12, marginTop: 6, marginBottom: 20 }}>This reason will be sent to the rider by email.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button style={{ ...btn('#f5f5f5'), color: C.gray, padding: '11px 20px' }} onClick={() => setRejectModal(null)}>Cancel</button>
+              <button style={{ ...btn(C.error), flex: 1, padding: '11px 0' }} onClick={reject}>✕ Reject &amp; Notify Rider</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── WITHDRAWALS ───────────────────────────────────────────────────────────────
 function Withdrawals() {
   const [list,setList]=useState([]); const [tab,setTab]=useState('pending');
@@ -954,6 +1150,7 @@ function AppContent() {
   const pages={
     overview:<Overview setPage={setPage}/>,
     restaurants:<Restaurants/>,
+    riders:<Riders/>,
     users:<Users/>,
     orders:<Orders/>,
     withdrawals:<Withdrawals/>,
