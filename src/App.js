@@ -1,9 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import axios from 'axios';
 
-
 const API = 'https://api.doorbite.ng/api';
-
 const api = axios.create({ baseURL: API });
 api.interceptors.request.use(c => { const t=localStorage.getItem('a_token'); if(t) c.headers.Authorization=`Bearer ${t}`; return c; });
 
@@ -36,7 +34,7 @@ function Login() {
           <div style={{width:52,height:52,borderRadius:14,background:C.primary,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26}}>⚡</div>
           <div><div style={{color:'#fff',fontWeight:800,fontSize:20}}>DoorBite</div><div style={{color:C.gray,fontSize:12,letterSpacing:1}}>ADMIN CONSOLE</div></div>
         </div>
-        {['Platform-wide analytics','User management','Withdrawal approvals','Customer refunds via Paystack','Promotional banners','Restaurant approvals','Menu categories','Commission management'].map(f=>(
+        {['Platform-wide analytics','User management','Rider approvals','Withdrawal approvals','Customer refunds via Paystack','Promotional banners','Restaurant approvals','Menu categories','Commission management'].map(f=>(
           <div key={f} style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
             <div style={{width:6,height:6,borderRadius:'50%',background:C.primary}} />
             <span style={{color:'rgba(255,255,255,0.7)',fontSize:14}}>{f}</span>
@@ -59,17 +57,19 @@ function Login() {
   );
 }
 
+// ── SIDEBAR ───────────────────────────────────────────────────────────────────
 function Sidebar({page,setPage,counts}) {
   const {user,logout}=useAuth();
   const nav=[
-    {k:'overview',l:'Overview',i:'📊'},
-    {k:'restaurants',l:'Restaurants',i:'🏪',badge:counts.p},
-    {k:'users',l:'Users',i:'👥'},
-    {k:'orders',l:'Orders',i:'📦'},
-    {k:'withdrawals',l:'Withdrawals',i:'💸',badge:counts.w},
-    {k:'refunds',l:'Refunds',i:'↩️',badge:counts.r},
-    {k:'promotions',l:'Promotions',i:'📢'},
-    {k:'categories',l:'Categories',i:'🏷️'},
+    {k:'overview',    l:'Overview',     i:'📊'},
+    {k:'restaurants', l:'Restaurants',  i:'🏪', badge:counts.p},
+    {k:'riders',      l:'Riders',       i:'🏍️', badge:counts.ri},  // ← NEW
+    {k:'users',       l:'Users',        i:'👥'},
+    {k:'orders',      l:'Orders',       i:'📦'},
+    {k:'withdrawals', l:'Withdrawals',  i:'💸', badge:counts.w},
+    {k:'refunds',     l:'Refunds',      i:'↩️', badge:counts.r},
+    {k:'promotions',  l:'Promotions',   i:'📢'},
+    {k:'categories',  l:'Categories',   i:'🏷️'},
   ];
   return (
     <div style={{width:230,background:C.sidebar,height:'100vh',display:'flex',flexDirection:'column',padding:'24px 16px',position:'sticky',top:0}}>
@@ -133,8 +133,6 @@ function CommissionModal({ restaurant, onClose, onSave }) {
           </div>
           <button onClick={onClose} style={{ background:'none', border:'none', fontSize:22, cursor:'pointer', color:C.gray }}>✕</button>
         </div>
-
-        {/* Current status banner */}
         {restaurant?.commissionOverride?.isActive && (
           <div style={{ background: isExpired ? '#FEF2F2' : '#F0FDF4', border:`1px solid ${isExpired ? '#FECACA' : '#BBF7D0'}`, borderRadius:12, padding:12, marginBottom:20 }}>
             <div style={{ fontSize:13, fontWeight:700, color: isExpired ? C.error : C.success, marginBottom:4 }}>
@@ -151,8 +149,6 @@ function CommissionModal({ restaurant, onClose, onSave }) {
             )}
           </div>
         )}
-
-        {/* Enable toggle */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C.bg, borderRadius:12, padding:16, marginBottom:20 }}>
           <div>
             <div style={{ fontWeight:700, fontSize:14 }}>Enable Commission Override</div>
@@ -163,10 +159,8 @@ function CommissionModal({ restaurant, onClose, onSave }) {
             <div style={{ position:'absolute', top:3, left:form.isActive?26:3, width:22, height:22, borderRadius:'50%', background:'#fff', transition:'left 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }} />
           </div>
         </div>
-
         {form.isActive && (
           <>
-            {/* Percentage */}
             <div style={{ marginBottom:20 }}>
               <label style={{ fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:10 }}>COMMISSION PERCENTAGE</label>
               <div style={{ display:'flex', alignItems:'center', gap:16 }}>
@@ -177,86 +171,40 @@ function CommissionModal({ restaurant, onClose, onSave }) {
                   {form.percentage}%
                 </div>
               </div>
-
-              {/* Quick presets */}
               <div style={{ display:'flex', gap:8, marginTop:12, flexWrap:'wrap' }}>
-                {[
-                  {v:0, l:'0% — Free'},
-                  {v:5, l:'5%'},
-                  {v:7.5, l:'7.5%'},
-                  {v:10, l:'10% — Default'},
-                  {v:12.5, l:'12.5%'},
-                  {v:15, l:'15%'},
-                  {v:20, l:'20%'},
-                ].map(({v,l}) => (
+                {[{v:0,l:'0% — Free'},{v:5,l:'5%'},{v:7.5,l:'7.5%'},{v:10,l:'10% — Default'},{v:12.5,l:'12.5%'},{v:15,l:'15%'},{v:20,l:'20%'}].map(({v,l}) => (
                   <button key={v} onClick={() => setForm({...form, percentage:v})}
                     style={{ ...btn(form.percentage===v ? C.primary : '#f0f0f0'), color:form.percentage===v?'#fff':'#555', padding:'6px 14px', fontSize:12, borderRadius:20, border:form.percentage===v?'none':`1px solid ${C.border}` }}>
                     {l}
                   </button>
                 ))}
               </div>
-
-              {/* Live breakdown example */}
               <div style={{ background:C.bg, borderRadius:12, padding:16, marginTop:16, border:`1px solid ${C.border}` }}>
                 <div style={{ fontSize:11, fontWeight:700, color:C.gray, marginBottom:10, letterSpacing:0.5 }}>📊 EXAMPLE BREAKDOWN ON ₦10,000 ORDER</div>
                 {[
-                  ['Customer pays', `₦${(10000 + 1000 + Math.round(10000*0.10)).toLocaleString()}`, '#333', false],
-                  ['Restaurant receives', `₦${Math.round(10000 * (1 - form.percentage/100)).toLocaleString()}`, form.percentage < 10 ? C.success : '#333', false],
-                  [`DoorBite commission (${form.percentage}%)`, `₦${Math.round(10000 * form.percentage/100).toLocaleString()}`, form.percentage < 10 ? '#8B5CF6' : form.percentage > 10 ? C.error : C.primary, false],
-                  ['Rider earnings', '₦900', '#333', false],
-                ].map(([label, val, color]) => (
+                  ['Restaurant receives', `₦${Math.round(10000*(1-form.percentage/100)).toLocaleString()}`, form.percentage<10?C.success:'#333'],
+                  [`DoorBite commission (${form.percentage}%)`, `₦${Math.round(10000*form.percentage/100).toLocaleString()}`, form.percentage<10?'#8B5CF6':form.percentage>10?C.error:C.primary],
+                  ['Rider earnings', '₦900', '#333'],
+                ].map(([label,val,color])=>(
                   <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 0', borderBottom:`1px solid ${C.border}` }}>
                     <span style={{ fontSize:13, color:C.gray }}>{label}</span>
                     <span style={{ fontSize:13, fontWeight:800, color }}>{val}</span>
                   </div>
                 ))}
-                {form.percentage < 10 && (
-                  <div style={{ marginTop:10, background:'#F0FDF4', borderRadius:8, padding:'8px 12px', fontSize:12, color:C.success, fontWeight:600 }}>
-                    ✅ Restaurant saves ₦{Math.round(10000 * (10 - form.percentage) / 100).toLocaleString()} compared to default 10%
-                  </div>
-                )}
-                {form.percentage > 10 && (
-                  <div style={{ marginTop:10, background:'#FEF2F2', borderRadius:8, padding:'8px 12px', fontSize:12, color:C.error, fontWeight:600 }}>
-                    ⚠️ Restaurant pays ₦{Math.round(10000 * (form.percentage - 10) / 100).toLocaleString()} more than default 10%
-                  </div>
-                )}
               </div>
             </div>
-
-            {/* Expiry */}
             <div style={{ marginBottom:16 }}>
-              <label style={{ fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6 }}>
-                EXPIRY DATE <span style={{ fontWeight:400, textTransform:'none' }}>(optional — leave blank for permanent)</span>
-              </label>
-              <input type="date" style={{...inp}} value={form.expiresAt}
-                onChange={e => setForm({...form, expiresAt:e.target.value})}
-                min={new Date().toISOString().split('T')[0]} />
-              {form.expiresAt ? (
-                <div style={{ fontSize:12, color:C.primary, marginTop:6, fontWeight:600 }}>
-                  ⏰ Auto-expires {new Date(form.expiresAt).toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' })} — reverts to 10% automatically
-                </div>
-              ) : (
-                <div style={{ fontSize:12, color:C.gray, marginTop:6 }}>No expiry — override stays active until manually changed</div>
-              )}
+              <label style={{ fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6 }}>EXPIRY DATE <span style={{ fontWeight:400 }}>(optional)</span></label>
+              <input type="date" style={{...inp}} value={form.expiresAt} onChange={e => setForm({...form, expiresAt:e.target.value})} min={new Date().toISOString().split('T')[0]} />
             </div>
-
-            {/* Reason */}
             <div style={{ marginBottom:24 }}>
-              <label style={{ fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6 }}>
-                REASON / NOTE <span style={{ fontWeight:400, textTransform:'none' }}>(optional)</span>
-              </label>
-              <input style={inp} placeholder="e.g. New restaurant promo, partnership deal, trial period, loyalty reward..." value={form.reason} onChange={e => setForm({...form, reason:e.target.value})} />
+              <label style={{ fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6 }}>REASON / NOTE <span style={{ fontWeight:400 }}>(optional)</span></label>
+              <input style={inp} placeholder="e.g. New restaurant promo, partnership deal..." value={form.reason} onChange={e => setForm({...form, reason:e.target.value})} />
             </div>
           </>
         )}
-
         <div style={{ display:'flex', gap:10 }}>
           <button style={{ ...btn('#f5f5f5'), color:C.gray, padding:'11px 20px' }} onClick={onClose}>Cancel</button>
-          {!form.isActive && restaurant?.commissionOverride?.isActive && (
-            <button style={{ ...btn(C.error), padding:'11px 20px' }} onClick={save} disabled={saving}>
-              {saving ? 'Saving...' : '✕ Remove Override'}
-            </button>
-          )}
           <button style={{ ...btn(form.isActive ? C.primary : C.success), flex:1, padding:'11px 0', fontSize:14 }} onClick={save} disabled={saving}>
             {saving ? 'Saving...' : form.isActive ? `✓ Apply ${form.percentage}% Commission` : '✓ Reset to Default 10%'}
           </button>
@@ -282,11 +230,12 @@ function Overview({setPage}) {
       <h1 style={{fontSize:26,fontWeight:800,marginBottom:4}}>Platform Overview</h1>
       <p style={{color:C.gray,marginBottom:24}}>{new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
 
-      {(stats.pendingWithdrawals>0||stats.pendingRefunds>0||stats.pendingRestaurants>0)&&(
-        <div style={{display:'flex',gap:14,marginBottom:20}}>
-          {stats.pendingRestaurants>0&&(<div onClick={()=>setPage('restaurants')} style={{flex:1,background:'#fff',borderRadius:14,padding:14,borderLeft:`4px solid ${C.primary}`,cursor:'pointer'}}><div style={{color:C.gray,fontSize:12,fontWeight:600}}>Restaurant applications</div><div style={{fontSize:28,fontWeight:800,color:C.primary}}>{stats.pendingRestaurants}</div><div style={{color:C.primary,fontWeight:700,fontSize:13}}>Review →</div></div>)}
-          {stats.pendingWithdrawals>0&&(<div onClick={()=>setPage('withdrawals')} style={{flex:1,background:'#fff',borderRadius:14,padding:14,borderLeft:`4px solid ${C.warning}`,cursor:'pointer'}}><div style={{color:C.gray,fontSize:12,fontWeight:600}}>Pending withdrawals</div><div style={{fontSize:28,fontWeight:800,color:C.warning}}>{stats.pendingWithdrawals}</div><div style={{color:C.primary,fontWeight:700,fontSize:13}}>Review →</div></div>)}
-          {stats.pendingRefunds>0&&(<div onClick={()=>setPage('refunds')} style={{flex:1,background:'#fff',borderRadius:14,padding:14,borderLeft:`4px solid ${C.error}`,cursor:'pointer'}}><div style={{color:C.gray,fontSize:12,fontWeight:600}}>Refund requests</div><div style={{fontSize:28,fontWeight:800,color:C.error}}>{stats.pendingRefunds}</div><div style={{color:C.primary,fontWeight:700,fontSize:13}}>Review →</div></div>)}
+      {(stats.pendingWithdrawals>0||stats.pendingRefunds>0||stats.pendingRestaurants>0||stats.pendingRiders>0)&&(
+        <div style={{display:'flex',gap:14,marginBottom:20,flexWrap:'wrap'}}>
+          {stats.pendingRestaurants>0&&(<div onClick={()=>setPage('restaurants')} style={{flex:1,minWidth:160,background:'#fff',borderRadius:14,padding:14,borderLeft:`4px solid ${C.primary}`,cursor:'pointer'}}><div style={{color:C.gray,fontSize:12,fontWeight:600}}>Restaurant applications</div><div style={{fontSize:28,fontWeight:800,color:C.primary}}>{stats.pendingRestaurants}</div><div style={{color:C.primary,fontWeight:700,fontSize:13}}>Review →</div></div>)}
+          {stats.pendingRiders>0&&(<div onClick={()=>setPage('riders')} style={{flex:1,minWidth:160,background:'#fff',borderRadius:14,padding:14,borderLeft:`4px solid ${C.warning}`,cursor:'pointer'}}><div style={{color:C.gray,fontSize:12,fontWeight:600}}>Rider applications</div><div style={{fontSize:28,fontWeight:800,color:C.warning}}>{stats.pendingRiders}</div><div style={{color:C.primary,fontWeight:700,fontSize:13}}>Review →</div></div>)}
+          {stats.pendingWithdrawals>0&&(<div onClick={()=>setPage('withdrawals')} style={{flex:1,minWidth:160,background:'#fff',borderRadius:14,padding:14,borderLeft:`4px solid ${C.warning}`,cursor:'pointer'}}><div style={{color:C.gray,fontSize:12,fontWeight:600}}>Pending withdrawals</div><div style={{fontSize:28,fontWeight:800,color:C.warning}}>{stats.pendingWithdrawals}</div><div style={{color:C.primary,fontWeight:700,fontSize:13}}>Review →</div></div>)}
+          {stats.pendingRefunds>0&&(<div onClick={()=>setPage('refunds')} style={{flex:1,minWidth:160,background:'#fff',borderRadius:14,padding:14,borderLeft:`4px solid ${C.error}`,cursor:'pointer'}}><div style={{color:C.gray,fontSize:12,fontWeight:600}}>Refund requests</div><div style={{fontSize:28,fontWeight:800,color:C.error}}>{stats.pendingRefunds}</div><div style={{color:C.primary,fontWeight:700,fontSize:13}}>Review →</div></div>)}
         </div>
       )}
 
@@ -314,14 +263,10 @@ function Overview({setPage}) {
         </div>
       </div>
 
-      {/* Active commission overrides */}
       {overrides.length > 0 && (
         <div style={{...card, marginBottom:20, borderTop:`3px solid ${C.warning}`}}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-            <div>
-              <h2 style={{ fontSize:18, fontWeight:800, marginBottom:2 }}>💰 Active Commission Overrides</h2>
-              <p style={{ color:C.gray, fontSize:13 }}>Restaurants not on the default 10% commission</p>
-            </div>
+            <div><h2 style={{ fontSize:18, fontWeight:800, marginBottom:2 }}>💰 Active Commission Overrides</h2><p style={{ color:C.gray, fontSize:13 }}>Restaurants not on the default 10% commission</p></div>
             <span style={{ background:C.warning+'22', color:C.warning, padding:'5px 14px', borderRadius:20, fontSize:13, fontWeight:700 }}>{overrides.length} active</span>
           </div>
           {overrides.map(r => {
@@ -335,19 +280,12 @@ function Overview({setPage}) {
                   <div>
                     <div style={{ fontWeight:700, fontSize:14 }}>{r.name}</div>
                     {r.commissionOverride?.reason && <div style={{ color:C.gray, fontSize:12 }}>📝 {r.commissionOverride.reason}</div>}
-                    {r.commissionOverride?.setAt && <div style={{ color:C.gray, fontSize:11 }}>Set {new Date(r.commissionOverride.setAt).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})}</div>}
                   </div>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                  {daysLeft !== null && (
-                    <span style={{ color: daysLeft <= 3 ? C.error : C.gray, fontSize:12, fontWeight:600 }}>
-                      {daysLeft <= 0 ? '⚠️ Expires today' : `${daysLeft}d left`}
-                    </span>
-                  )}
+                  {daysLeft !== null && <span style={{ color: daysLeft <= 3 ? C.error : C.gray, fontSize:12, fontWeight:600 }}>{daysLeft <= 0 ? '⚠️ Expires today' : `${daysLeft}d left`}</span>}
                   {!exp && <span style={{ color:C.gray, fontSize:12 }}>Permanent</span>}
-                  <div style={{ background: pct < 10 ? C.success+'22' : pct > 10 ? C.error+'22' : C.primary+'22', color: pct < 10 ? C.success : pct > 10 ? C.error : C.primary, padding:'6px 16px', borderRadius:20, fontWeight:900, fontSize:16 }}>
-                    {pct}%
-                  </div>
+                  <div style={{ background: pct < 10 ? C.success+'22' : pct > 10 ? C.error+'22' : C.primary+'22', color: pct < 10 ? C.success : pct > 10 ? C.error : C.primary, padding:'6px 16px', borderRadius:20, fontWeight:900, fontSize:16 }}>{pct}%</div>
                 </div>
               </div>
             );
@@ -356,7 +294,7 @@ function Overview({setPage}) {
       )}
 
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14}}>
-        {[['CUSTOMERS',stats.totalUsers,'registered'],['RESTAURANTS',stats.totalRestaurants,'active'],['RIDERS',stats.totalRiders,'registered'],['TOTAL ORDERS',stats.totalOrders,'paid']].map(([l,v,s])=>(
+        {[['CUSTOMERS',stats.totalUsers,'registered'],['RESTAURANTS',stats.totalRestaurants,'active'],['RIDERS',stats.totalRiders,'approved'],['TOTAL ORDERS',stats.totalOrders,'paid']].map(([l,v,s])=>(
           <div key={l} style={{...card,marginBottom:0}}><div style={{fontSize:10,fontWeight:700,color:C.gray,letterSpacing:0.8}}>{l}</div><div style={{fontSize:22,fontWeight:800,margin:'4px 0'}}>{v}</div><div style={{fontSize:11,color:C.gray}}>{s}</div></div>
         ))}
       </div>
@@ -389,20 +327,17 @@ function Restaurants() {
     <div style={{padding:28,overflowY:'auto',flex:1}}>
       <h1 style={{fontSize:26,fontWeight:800,marginBottom:4}}>Restaurants 🏪</h1>
       <p style={{color:C.gray,marginTop:4,marginBottom:20}}>Approve applications, manage restaurants, and set custom commission rates.</p>
-
       <div style={{display:'flex',gap:14,marginBottom:24}}>
         <div style={{...card,marginBottom:0,flex:1,borderTop:`3px solid ${C.warning}`}}><div style={{fontSize:10,fontWeight:700,color:C.gray,letterSpacing:0.5}}>PENDING APPROVAL</div><div style={{fontSize:28,fontWeight:800,color:C.warning,margin:'4px 0'}}>{pending.length}</div><div style={{fontSize:11,color:C.gray}}>Awaiting review</div></div>
         <div style={{...card,marginBottom:0,flex:1,borderTop:`3px solid ${C.success}`}}><div style={{fontSize:10,fontWeight:700,color:C.gray,letterSpacing:0.5}}>ACTIVE</div><div style={{fontSize:28,fontWeight:800,color:C.success,margin:'4px 0'}}>{approved.filter(r=>!r.isSuspended).length}</div><div style={{fontSize:11,color:C.gray}}>Live on platform</div></div>
         <div style={{...card,marginBottom:0,flex:1,borderTop:`3px solid ${C.error}`}}><div style={{fontSize:10,fontWeight:700,color:C.gray,letterSpacing:0.5}}>SUSPENDED</div><div style={{fontSize:28,fontWeight:800,color:C.error,margin:'4px 0'}}>{approved.filter(r=>r.isSuspended).length}</div><div style={{fontSize:11,color:C.gray}}>Temporarily disabled</div></div>
         <div style={{...card,marginBottom:0,flex:1,borderTop:`3px solid #8B5CF6`}}><div style={{fontSize:10,fontWeight:700,color:C.gray,letterSpacing:0.5}}>CUSTOM COMMISSION</div><div style={{fontSize:28,fontWeight:800,color:'#8B5CF6',margin:'4px 0'}}>{approved.filter(r=>r.commissionOverride?.isActive).length}</div><div style={{fontSize:11,color:C.gray}}>Non-default rate</div></div>
       </div>
-
       <div style={{display:'flex',gap:8,marginBottom:20}}>
         {[['pending',`Pending (${pending.length})`],['approved',`Active (${approved.length})`]].map(([key,label])=>(
           <button key={key} onClick={()=>setTab(key)} style={{...btn(tab===key?C.primary:'#fff'),color:tab===key?'#fff':C.gray,border:`1px solid ${C.border}`,borderRadius:20}}>{label}</button>
         ))}
       </div>
-
       {loading?<div style={{textAlign:'center',padding:40,color:C.gray}}>Loading...</div>:
         tab==='pending'?(
           pending.length===0?(<div style={{...card,textAlign:'center',padding:60}}><div style={{fontSize:48,marginBottom:12}}>✅</div><p style={{color:C.gray,fontSize:16,fontWeight:600}}>No pending applications</p></div>):
@@ -444,27 +379,15 @@ function Restaurants() {
                         <strong style={{fontSize:16}}>{r.name}</strong>
                         <span style={badge(r.isSuspended?C.error:C.success)}>{r.isSuspended?'Suspended':'Active'}</span>
                         <span style={badge(r.isOpen?C.success:C.gray)}>{r.isOpen?'Open':'Closed'}</span>
-                        {hasOverride && !isExpired && (
-                          <span style={badge('#8B5CF6')}>{overridePct}% commission</span>
-                        )}
-                        {hasOverride && isExpired && (
-                          <span style={badge(C.gray)}>Override expired</span>
-                        )}
+                        {hasOverride && !isExpired && <span style={badge('#8B5CF6')}>{overridePct}% commission</span>}
                       </div>
                       <div style={{color:C.gray,fontSize:13}}>{r.cuisineType} · {r.address}</div>
                       <div style={{color:C.gray,fontSize:12,marginTop:2}}>Owner: {r.owner?.name} · {r.owner?.email}</div>
-                      {hasOverride && !isExpired && r.commissionOverride?.reason && (
-                        <div style={{color:'#8B5CF6',fontSize:12,marginTop:3}}>📝 {r.commissionOverride.reason}</div>
-                      )}
                     </div>
                   </div>
                   <div style={{display:'flex',gap:8,flexShrink:0}}>
-                    <button style={btn(r.isSuspended?C.success:C.error)} onClick={()=>suspend(r._id,r.isSuspended)}>
-                      {r.isSuspended?'Unsuspend':'Suspend'}
-                    </button>
-                    <button style={{...btn('#fff'),color:'#8B5CF6',border:`1px solid #8B5CF6`,fontWeight:700}} onClick={()=>setCommissionTarget(r)}>
-                      💰 {hasOverride && !isExpired ? `${overridePct}%` : 'Commission'}
-                    </button>
+                    <button style={btn(r.isSuspended?C.success:C.error)} onClick={()=>suspend(r._id,r.isSuspended)}>{r.isSuspended?'Unsuspend':'Suspend'}</button>
+                    <button style={{...btn('#fff'),color:'#8B5CF6',border:`1px solid #8B5CF6`,fontWeight:700}} onClick={()=>setCommissionTarget(r)}>💰 {hasOverride && !isExpired ? `${overridePct}%` : 'Commission'}</button>
                   </div>
                 </div>
               </div>
@@ -472,29 +395,18 @@ function Restaurants() {
           })
         )
       }
-
-      {commissionTarget && (
-        <CommissionModal
-          restaurant={commissionTarget}
-          onClose={() => setCommissionTarget(null)}
-          onSave={() => loadAll()}
-        />
-      )}
+      {commissionTarget && <CommissionModal restaurant={commissionTarget} onClose={() => setCommissionTarget(null)} onSave={() => loadAll()} />}
     </div>
   );
 }
 
-
-
-// ── ADD THIS COMPONENT to admin-web/src/App.js ────────────────────────────────
-// Place after the Categories component and before AppContent
-
+// ── RIDERS ────────────────────────────────────────────────────────────────────
 function Riders() {
   const [pending, setPending] = useState([]);
   const [approved, setApproved] = useState([]);
   const [tab, setTab] = useState('pending');
   const [loading, setLoading] = useState(true);
-  const [rejectModal, setRejectModal] = useState(null); // rider to reject
+  const [rejectModal, setRejectModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
 
   const loadAll = () => {
@@ -511,143 +423,146 @@ function Riders() {
   useEffect(() => { loadAll(); }, []);
 
   const approve = async (id) => {
-    await api.patch(`/riders/${id}/approve`);
-    const rider = pending.find(r => r._id === id);
-    setPending(prev => prev.filter(r => r._id !== id));
-    if (rider) setApproved(prev => [{ ...rider, isApproved: true }, ...prev]);
+    try {
+      await api.patch(`/riders/${id}/approve`);
+      const rider = pending.find(r => r._id === id);
+      setPending(prev => prev.filter(r => r._id !== id));
+      if (rider) setApproved(prev => [{ ...rider, isApproved: true }, ...prev]);
+    } catch (err) { alert(err.response?.data?.message || err.message); }
   };
 
   const reject = async () => {
     if (!rejectReason.trim()) return alert('Please provide a rejection reason');
-    await api.patch(`/riders/${rejectModal._id}/reject`, { reason: rejectReason });
-    setPending(prev => prev.filter(r => r._id !== rejectModal._id));
-    setRejectModal(null);
-    setRejectReason('');
+    try {
+      await api.patch(`/riders/${rejectModal._id}/reject`, { reason: rejectReason });
+      setPending(prev => prev.filter(r => r._id !== rejectModal._id));
+      setRejectModal(null);
+      setRejectReason('');
+    } catch (err) { alert(err.response?.data?.message || err.message); }
   };
 
   const suspend = async (id, isSuspended) => {
-    await api.patch(`/users/${id}/suspend`, { isSuspended: !isSuspended });
-    setApproved(prev => prev.map(r => r._id === id ? { ...r, isSuspended: !isSuspended } : r));
+    try {
+      await api.patch(`/users/${id}/suspend`, { isSuspended: !isSuspended });
+      setApproved(prev => prev.map(r => r._id === id ? { ...r, isSuspended: !isSuspended } : r));
+    } catch (err) { alert(err.response?.data?.message || err.message); }
   };
 
   return (
-    <div style={{ padding: 28, overflowY: 'auto', flex: 1 }}>
-      <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>Riders 🏍️</h1>
-      <p style={{ color: C.gray, marginBottom: 20 }}>Verify rider identities and approve accounts before they can deliver.</p>
+    <div style={{ padding:28, overflowY:'auto', flex:1 }}>
+      <h1 style={{ fontSize:26, fontWeight:800, marginBottom:4 }}>Riders 🏍️</h1>
+      <p style={{ color:C.gray, marginBottom:20 }}>Verify rider identities and approve accounts before they can deliver.</p>
 
       {/* Stats */}
-      <div style={{ display: 'flex', gap: 14, marginBottom: 24 }}>
-        <div style={{ ...card, marginBottom: 0, flex: 1, borderTop: `3px solid ${C.warning}` }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: 0.5 }}>PENDING APPROVAL</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: C.warning, margin: '4px 0' }}>{pending.length}</div>
-          <div style={{ fontSize: 11, color: C.gray }}>Awaiting review</div>
+      <div style={{ display:'flex', gap:14, marginBottom:24 }}>
+        <div style={{ ...card, marginBottom:0, flex:1, borderTop:`3px solid ${C.warning}` }}>
+          <div style={{ fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5 }}>PENDING APPROVAL</div>
+          <div style={{ fontSize:28, fontWeight:800, color:C.warning, margin:'4px 0' }}>{pending.length}</div>
+          <div style={{ fontSize:11, color:C.gray }}>Awaiting review</div>
         </div>
-        <div style={{ ...card, marginBottom: 0, flex: 1, borderTop: `3px solid ${C.success}` }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: 0.5 }}>APPROVED</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: C.success, margin: '4px 0' }}>{approved.filter(r => !r.isSuspended).length}</div>
-          <div style={{ fontSize: 11, color: C.gray }}>Active riders</div>
+        <div style={{ ...card, marginBottom:0, flex:1, borderTop:`3px solid ${C.success}` }}>
+          <div style={{ fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5 }}>APPROVED</div>
+          <div style={{ fontSize:28, fontWeight:800, color:C.success, margin:'4px 0' }}>{approved.filter(r => !r.isSuspended).length}</div>
+          <div style={{ fontSize:11, color:C.gray }}>Active riders</div>
         </div>
-        <div style={{ ...card, marginBottom: 0, flex: 1, borderTop: `3px solid ${C.error}` }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: 0.5 }}>SUSPENDED</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: C.error, margin: '4px 0' }}>{approved.filter(r => r.isSuspended).length}</div>
-          <div style={{ fontSize: 11, color: C.gray }}>Suspended riders</div>
+        <div style={{ ...card, marginBottom:0, flex:1, borderTop:`3px solid ${C.primary}` }}>
+          <div style={{ fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5 }}>ONLINE NOW</div>
+          <div style={{ fontSize:28, fontWeight:800, color:C.primary, margin:'4px 0' }}>{approved.filter(r => r.isOnline).length}</div>
+          <div style={{ fontSize:11, color:C.gray }}>Currently active</div>
+        </div>
+        <div style={{ ...card, marginBottom:0, flex:1, borderTop:`3px solid ${C.error}` }}>
+          <div style={{ fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5 }}>SUSPENDED</div>
+          <div style={{ fontSize:28, fontWeight:800, color:C.error, margin:'4px 0' }}>{approved.filter(r => r.isSuspended).length}</div>
+          <div style={{ fontSize:11, color:C.gray }}>Suspended riders</div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div style={{ display:'flex', gap:8, marginBottom:20 }}>
         {[['pending', `Pending (${pending.length})`], ['approved', `Approved (${approved.length})`]].map(([key, label]) => (
-          <button key={key} onClick={() => setTab(key)} style={{ ...btn(tab === key ? C.primary : '#fff'), color: tab === key ? '#fff' : C.gray, border: `1px solid ${C.border}`, borderRadius: 20 }}>{label}</button>
+          <button key={key} onClick={() => setTab(key)} style={{ ...btn(tab===key ? C.primary : '#fff'), color:tab===key?'#fff':C.gray, border:`1px solid ${C.border}`, borderRadius:20 }}>{label}</button>
         ))}
       </div>
 
-      {loading ? <div style={{ textAlign: 'center', padding: 40, color: C.gray }}>Loading...</div> :
+      {loading ? <div style={{ textAlign:'center', padding:40, color:C.gray }}>Loading...</div> :
         tab === 'pending' ? (
           pending.length === 0 ? (
-            <div style={{ ...card, textAlign: 'center', padding: 60 }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
-              <p style={{ color: C.gray, fontSize: 16, fontWeight: 600 }}>No pending rider applications</p>
+            <div style={{ ...card, textAlign:'center', padding:60 }}>
+              <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
+              <p style={{ color:C.gray, fontSize:16, fontWeight:600 }}>No pending rider applications</p>
             </div>
           ) : pending.map(rider => (
-            <div key={rider._id} style={{ ...card, borderLeft: `4px solid ${C.warning}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 24, background: C.warning + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, border: `2px solid ${C.warning}44` }}>
+            <div key={rider._id} style={{ ...card, borderLeft:`4px solid ${C.warning}` }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+                    <div style={{ width:48, height:48, borderRadius:24, background:C.warning+'22', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:800, border:`2px solid ${C.warning}44`, color:C.warning }}>
                       {rider.name?.[0]?.toUpperCase()}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: 17 }}>{rider.name}</div>
-                      <div style={{ color: C.gray, fontSize: 13 }}>{rider.email}</div>
+                      <div style={{ fontWeight:800, fontSize:17 }}>{rider.name}</div>
+                      <div style={{ color:C.gray, fontSize:13 }}>{rider.email}</div>
                     </div>
-                    <span style={{ ...badge(C.warning), marginLeft: 4 }}>Pending</span>
+                    <span style={{ ...badge(C.warning), marginLeft:4 }}>Pending</span>
                   </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
                     {[
                       ['📞 Phone', rider.phone || '—'],
                       ['🏍️ Vehicle', rider.vehicleType || '—'],
                       ['🪪 ID Type', rider.idType || 'NIN'],
                       ['🔢 ID Number', rider.ninNumber || '—'],
-                      ['📅 Applied', new Date(rider.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })],
+                      ['📅 Applied', new Date(rider.createdAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })],
                       ['📧 Email', rider.email],
                     ].map(([label, value]) => (
-                      <div key={label} style={{ background: C.bg, borderRadius: 8, padding: '8px 12px' }}>
-                        <div style={{ fontSize: 11, color: C.gray, fontWeight: 700 }}>{label}</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{value}</div>
+                      <div key={label} style={{ background:C.bg, borderRadius:8, padding:'8px 12px' }}>
+                        <div style={{ fontSize:11, color:C.gray, fontWeight:700 }}>{label}</div>
+                        <div style={{ fontSize:13, fontWeight:600, marginTop:2 }}>{value}</div>
                       </div>
                     ))}
                   </div>
-
                   {rider.idDocumentUrl && (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontSize: 11, color: C.gray, fontWeight: 700, marginBottom: 4 }}>📎 UPLOADED ID DOCUMENT</div>
-                      <a href={rider.idDocumentUrl} target="_blank" rel="noreferrer"
-                        style={{ color: C.primary, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-                        🔗 View Document →
-                      </a>
+                    <div style={{ marginTop:12 }}>
+                      <div style={{ fontSize:11, color:C.gray, fontWeight:700, marginBottom:4 }}>📎 UPLOADED ID DOCUMENT</div>
+                      <a href={rider.idDocumentUrl} target="_blank" rel="noreferrer" style={{ color:C.primary, fontSize:13, fontWeight:600, textDecoration:'none' }}>🔗 View Document →</a>
                     </div>
                   )}
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginLeft: 20, flexShrink: 0 }}>
-                  <button style={{ ...btn(C.success), padding: '10px 24px', fontSize: 14 }} onClick={() => approve(rider._id)}>✓ Approve</button>
-                  <button style={{ ...btn('#fff'), color: C.error, border: `1px solid ${C.error}`, padding: '10px 24px', fontSize: 14 }}
-                    onClick={() => { setRejectModal(rider); setRejectReason(''); }}>✕ Reject</button>
+                <div style={{ display:'flex', flexDirection:'column', gap:8, marginLeft:20, flexShrink:0 }}>
+                  <button style={{ ...btn(C.success), padding:'10px 24px', fontSize:14 }} onClick={() => approve(rider._id)}>✓ Approve</button>
+                  <button style={{ ...btn('#fff'), color:C.error, border:`1px solid ${C.error}`, padding:'10px 24px', fontSize:14 }} onClick={() => { setRejectModal(rider); setRejectReason(''); }}>✕ Reject</button>
                 </div>
               </div>
             </div>
           ))
         ) : (
           approved.length === 0 ? (
-            <div style={{ ...card, textAlign: 'center', padding: 60 }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>🏍️</div>
-              <p style={{ color: C.gray, fontSize: 16, fontWeight: 600 }}>No approved riders yet</p>
+            <div style={{ ...card, textAlign:'center', padding:60 }}>
+              <div style={{ fontSize:48, marginBottom:12 }}>🏍️</div>
+              <p style={{ color:C.gray, fontSize:16, fontWeight:600 }}>No approved riders yet</p>
             </div>
           ) : approved.map(rider => (
             <div key={rider._id} style={{ ...card }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 22, background: C.success + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, border: `2px solid ${C.success}44` }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                  <div style={{ width:44, height:44, borderRadius:22, background:C.success+'22', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:800, color:C.success, border:`2px solid ${C.success}44` }}>
                     {rider.name?.[0]?.toUpperCase()}
                   </div>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <strong style={{ fontSize: 15 }}>{rider.name}</strong>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2, flexWrap:'wrap' }}>
+                      <strong style={{ fontSize:15 }}>{rider.name}</strong>
                       <span style={badge(rider.isSuspended ? C.error : C.success)}>{rider.isSuspended ? 'Suspended' : 'Active'}</span>
                       <span style={badge(rider.isOnline ? C.success : C.gray)}>{rider.isOnline ? '● Online' : '● Offline'}</span>
                     </div>
-                    <div style={{ color: C.gray, fontSize: 12 }}>{rider.email} · {rider.phone}</div>
-                    <div style={{ color: C.gray, fontSize: 12, marginTop: 2 }}>
-                      {rider.vehicleType} · {rider.idType}: {rider.ninNumber} · ⭐ {rider.rating?.toFixed(1)} · {rider.totalTrips} trips · ₦{rider.totalEarnings?.toLocaleString()} earned
+                    <div style={{ color:C.gray, fontSize:12 }}>{rider.email} · {rider.phone}</div>
+                    <div style={{ color:C.gray, fontSize:12, marginTop:2 }}>
+                      {rider.vehicleType && `${rider.vehicleType} · `}{rider.idType}: {rider.ninNumber || '—'} · ⭐ {rider.rating?.toFixed(1)} · {rider.totalTrips} trips · ₦{(rider.totalEarnings||0).toLocaleString()} earned
                     </div>
+                    {rider.approvedAt && <div style={{ color:C.gray, fontSize:11, marginTop:2 }}>Approved {new Date(rider.approvedAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</div>}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                  <button style={btn(rider.isSuspended ? C.success : C.error)} onClick={() => suspend(rider._id, rider.isSuspended)}>
-                    {rider.isSuspended ? 'Unsuspend' : 'Suspend'}
-                  </button>
-                </div>
+                <button style={btn(rider.isSuspended ? C.success : C.error)} onClick={() => suspend(rider._id, rider.isSuspended)}>
+                  {rider.isSuspended ? 'Unsuspend' : 'Suspend'}
+                </button>
               </div>
             </div>
           ))
@@ -656,22 +571,18 @@ function Riders() {
 
       {/* Reject Modal */}
       {rejectModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
-          onClick={e => e.target === e.currentTarget && setRejectModal(null)}>
-          <div style={{ background: '#fff', borderRadius: 20, padding: 32, width: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>✕ Reject Rider Application</h2>
-            <p style={{ color: C.gray, fontSize: 13, marginBottom: 20 }}>{rejectModal.name} · {rejectModal.email}</p>
-            <label style={{ fontSize: 12, fontWeight: 700, color: C.gray, letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>REJECTION REASON *</label>
-            <textarea
-              style={{ ...inp, height: 100, resize: 'vertical', fontFamily: 'inherit' }}
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={e => e.target===e.currentTarget && setRejectModal(null)}>
+          <div style={{ background:'#fff', borderRadius:20, padding:32, width:480, boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+            <h2 style={{ fontSize:20, fontWeight:800, marginBottom:4 }}>✕ Reject Rider Application</h2>
+            <p style={{ color:C.gray, fontSize:13, marginBottom:20 }}>{rejectModal.name} · {rejectModal.email}</p>
+            <label style={{ fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6 }}>REJECTION REASON *</label>
+            <textarea style={{ ...inp, height:100, resize:'vertical', fontFamily:'inherit' }}
               placeholder="e.g. Invalid NIN number provided, ID document unclear, does not meet age requirement..."
-              value={rejectReason}
-              onChange={e => setRejectReason(e.target.value)}
-            />
-            <p style={{ color: C.gray, fontSize: 12, marginTop: 6, marginBottom: 20 }}>This reason will be sent to the rider by email.</p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button style={{ ...btn('#f5f5f5'), color: C.gray, padding: '11px 20px' }} onClick={() => setRejectModal(null)}>Cancel</button>
-              <button style={{ ...btn(C.error), flex: 1, padding: '11px 0' }} onClick={reject}>✕ Reject &amp; Notify Rider</button>
+              value={rejectReason} onChange={e => setRejectReason(e.target.value)} />
+            <p style={{ color:C.gray, fontSize:12, marginTop:6, marginBottom:20 }}>This reason will be sent to the rider by email.</p>
+            <div style={{ display:'flex', gap:10 }}>
+              <button style={{ ...btn('#f5f5f5'), color:C.gray, padding:'11px 20px' }} onClick={() => setRejectModal(null)}>Cancel</button>
+              <button style={{ ...btn(C.error), flex:1, padding:'11px 0' }} onClick={reject}>✕ Reject &amp; Notify Rider</button>
             </div>
           </div>
         </div>
@@ -771,21 +682,13 @@ function Orders() {
       </div>
       <div style={card}>
         <table style={{width:'100%',borderCollapse:'collapse'}}>
-          <thead><tr>{['Order','Customer','Restaurant','Subtotal','Delivery','Service','Commission','Total','Status','Payment','Date','Action'].map(h=><th key={h} style={{textAlign:'left',padding:'10px 14px',fontSize:11,fontWeight:700,color:C.gray,letterSpacing:0.5,borderBottom:`1px solid ${C.border}`}}>{h}</th>)}</tr></thead>
+          <thead><tr>{['Order','Customer','Restaurant','Total','Status','Payment','Date','Action'].map(h=><th key={h} style={{textAlign:'left',padding:'10px 14px',fontSize:11,fontWeight:700,color:C.gray,letterSpacing:0.5,borderBottom:`1px solid ${C.border}`}}>{h}</th>)}</tr></thead>
           <tbody>
             {orders.map(o=>(
               <tr key={o._id}>
                 <td style={{padding:'12px 14px',fontSize:13,borderBottom:`1px solid ${C.border}`,color:C.primary,fontWeight:700}}>#{o.orderCode}</td>
                 <td style={{padding:'12px 14px',fontSize:13,borderBottom:`1px solid ${C.border}`}}>{o.customer?.name}</td>
                 <td style={{padding:'12px 14px',fontSize:13,borderBottom:`1px solid ${C.border}`}}>{o.restaurant?.name}</td>
-                <td style={{padding:'12px 14px',fontSize:13,borderBottom:`1px solid ${C.border}`}}>₦{o.subtotal?.toLocaleString()}</td>
-                <td style={{padding:'12px 14px',fontSize:13,borderBottom:`1px solid ${C.border}`}}>₦{o.deliveryFee?.toLocaleString()}</td>
-                <td style={{padding:'12px 14px',fontSize:13,borderBottom:`1px solid ${C.border}`}}>₦{o.serviceFee?.toLocaleString()}</td>
-                <td style={{padding:'12px 14px',fontSize:13,borderBottom:`1px solid ${C.border}`}}>
-                  <span style={{color: o.commissionPct < 10 ? C.success : o.commissionPct > 10 ? C.error : C.gray, fontWeight:700}}>
-                    {o.commissionPct ?? 10}%
-                  </span>
-                </td>
                 <td style={{padding:'12px 14px',fontSize:13,fontWeight:700,borderBottom:`1px solid ${C.border}`}}>₦{o.total?.toLocaleString()}</td>
                 <td style={{padding:'12px 14px',borderBottom:`1px solid ${C.border}`}}><span style={badge(SC[o.status]||C.gray)}>{o.status}</span></td>
                 <td style={{padding:'12px 14px',borderBottom:`1px solid ${C.border}`}}><span style={badge(o.paymentStatus==='paid'?C.success:C.warning)}>{o.paymentStatus}</span></td>
@@ -820,7 +723,7 @@ function Refunds() {
         <div key={o._id} style={card}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
             <div><strong>Order #{o.orderCode}</strong><span style={{...badge(C.primary),marginLeft:8}}>{o.restaurant?.name}</span><span style={{...badge(C.gray),marginLeft:8}}>{o.customer?.name}</span></div>
-            <div style={{textAlign:'right'}}><strong style={{fontSize:18,display:'block'}}>₦{o.total?.toLocaleString()}</strong><span style={{fontSize:12,color:C.gray}}>Subtotal: ₦{o.subtotal?.toLocaleString()}</span></div>
+            <strong style={{fontSize:18}}>₦{o.total?.toLocaleString()}</strong>
           </div>
           <p style={{color:C.gray,fontSize:13,fontStyle:'italic',marginBottom:12}}>"{o.refundReason}"</p>
           <div style={{display:'flex',gap:8}}>
@@ -875,7 +778,7 @@ function Promotions() {
           <h3 style={{fontWeight:800,fontSize:18,marginBottom:16}}>Create New Banner</h3>
           <div style={{marginBottom:20}}>
             <div style={{fontSize:11,fontWeight:700,color:C.gray,letterSpacing:0.5,marginBottom:8}}>LIVE PREVIEW</div>
-            <div style={{borderRadius:16,padding:22,background:form.bgColor,display:'flex',alignItems:'center',justifyContent:'space-between',minHeight:120,maxWidth:520,overflow:'hidden'}}>
+            <div style={{borderRadius:16,padding:22,background:form.bgColor,display:'flex',alignItems:'center',justifyContent:'space-between',minHeight:120,maxWidth:520}}>
               <div>
                 <div style={{fontSize:30,marginBottom:6}}>{form.emoji}</div>
                 <div style={{color:'#fff',fontWeight:800,fontSize:22,marginBottom:4}}>{form.title||'Banner Title'}</div>
@@ -956,175 +859,79 @@ function Categories() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({name:'', emoji:'🍔', color:'#FF6B2C', isActive:true});
   const [saving, setSaving] = useState(false);
-
   const EMOJI_OPTIONS = ['🍔','🍕','🍜','🍗','🥗','🌮','🍣','🧃','🍰','🥩','🌯','🥪','🍱','🥘','🍛','🍲','🥞','🧆','🌽','🥑','🍦','☕','🧋','🍺','🍹','🎂','🥐','🍞','🫕','🥙'];
   const COLOR_OPTIONS = ['#FF6B2C','#EF4444','#F59E0B','#22C55E','#3B82F6','#8B5CF6','#EC4899','#06B6D4','#1A1A1A','#0F172A','#065F46','#92400E'];
-
-  const fetch_ = async () => {
-    setLoading(true);
-    try { const { data } = await api.get('/categories/all'); setCategories(data); }
-    catch { alert('Could not load categories'); }
-    finally { setLoading(false); }
-  };
-
+  const fetch_ = async () => { setLoading(true); try { const { data } = await api.get('/categories/all'); setCategories(data); } catch { alert('Could not load categories'); } finally { setLoading(false); } };
   useEffect(() => { fetch_(); }, []);
-
   const resetForm = () => { setForm({name:'', emoji:'🍔', color:'#FF6B2C', isActive:true}); setEditingId(null); };
-
   const save = async () => {
     if (!form.name.trim()) return alert('Category name is required');
     setSaving(true);
     try {
-      if (editingId) {
-        const { data } = await api.patch(`/categories/${editingId}`, form);
-        setCategories(prev => prev.map(c => c._id === editingId ? data : c));
-      } else {
-        const { data } = await api.post('/categories', form);
-        setCategories(prev => [...prev, data]);
-      }
+      if (editingId) { const { data } = await api.patch(`/categories/${editingId}`, form); setCategories(prev => prev.map(c => c._id === editingId ? data : c)); }
+      else { const { data } = await api.post('/categories', form); setCategories(prev => [...prev, data]); }
       resetForm(); setShowForm(false);
     } catch (err) { alert(err.response?.data?.message || err.message); }
     finally { setSaving(false); }
   };
-
-  const del = async (id, name) => {
-    if (!window.confirm(`Delete "${name}"?`)) return;
-    await api.delete(`/categories/${id}`);
-    setCategories(prev => prev.filter(c => c._id !== id));
-  };
-
-  const startEdit = (cat) => {
-    setForm({ name: cat.name, emoji: cat.emoji, color: cat.color, isActive: cat.isActive });
-    setEditingId(cat._id);
-    setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const toggleActive = async (cat) => {
-    const { data } = await api.patch(`/categories/${cat._id}`, { isActive: !cat.isActive });
-    setCategories(prev => prev.map(c => c._id === cat._id ? data : c));
-  };
-
-  const moveUp = async (i) => {
-    if (i === 0) return;
-    const cats = [...categories];
-    [cats[i-1], cats[i]] = [cats[i], cats[i-1]];
-    setCategories(cats);
-    await api.patch('/categories/reorder', { categories: cats.map((c, idx) => ({ _id: c._id, order: idx })) }).catch(() => {});
-  };
-
-  const moveDown = async (i) => {
-    if (i === categories.length - 1) return;
-    const cats = [...categories];
-    [cats[i], cats[i+1]] = [cats[i+1], cats[i]];
-    setCategories(cats);
-    await api.patch('/categories/reorder', { categories: cats.map((c, idx) => ({ _id: c._id, order: idx })) }).catch(() => {});
-  };
-
+  const del = async (id, name) => { if (!window.confirm(`Delete "${name}"?`)) return; await api.delete(`/categories/${id}`); setCategories(prev => prev.filter(c => c._id !== id)); };
+  const startEdit = (cat) => { setForm({ name: cat.name, emoji: cat.emoji, color: cat.color, isActive: cat.isActive }); setEditingId(cat._id); setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const toggleActive = async (cat) => { const { data } = await api.patch(`/categories/${cat._id}`, { isActive: !cat.isActive }); setCategories(prev => prev.map(c => c._id === cat._id ? data : c)); };
+  const moveUp = async (i) => { if (i === 0) return; const cats = [...categories]; [cats[i-1], cats[i]] = [cats[i], cats[i-1]]; setCategories(cats); await api.patch('/categories/reorder', { categories: cats.map((c, idx) => ({ _id: c._id, order: idx })) }).catch(() => {}); };
+  const moveDown = async (i) => { if (i === categories.length - 1) return; const cats = [...categories]; [cats[i], cats[i+1]] = [cats[i+1], cats[i]]; setCategories(cats); await api.patch('/categories/reorder', { categories: cats.map((c, idx) => ({ _id: c._id, order: idx })) }).catch(() => {}); };
   return (
     <div style={{padding:28, overflowY:'auto', flex:1}}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8}}>
-        <div>
-          <h1 style={{fontSize:26, fontWeight:800}}>Categories 🏷️</h1>
-          <p style={{color:C.gray, marginTop:4}}>Manage the browse-by-category section on the customer home screen.</p>
-        </div>
-        <button style={{...btn(C.primary), padding:'10px 20px', fontSize:14}} onClick={() => { resetForm(); setShowForm(!showForm); }}>
-          {showForm && !editingId ? '✕ Cancel' : '+ Add Category'}
-        </button>
+        <div><h1 style={{fontSize:26, fontWeight:800}}>Categories 🏷️</h1><p style={{color:C.gray, marginTop:4}}>Manage the browse-by-category section on the customer home screen.</p></div>
+        <button style={{...btn(C.primary), padding:'10px 20px', fontSize:14}} onClick={() => { resetForm(); setShowForm(!showForm); }}>{showForm && !editingId ? '✕ Cancel' : '+ Add Category'}</button>
       </div>
       <div style={{display:'flex', gap:14, marginBottom:24, marginTop:16}}>
-        <div style={{...card, marginBottom:0, flex:1, borderTop:`3px solid ${C.primary}`}}><div style={{fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5}}>TOTAL</div><div style={{fontSize:28, fontWeight:800, color:C.primary, margin:'4px 0'}}>{categories.length}</div><div style={{fontSize:11, color:C.gray}}>All categories</div></div>
-        <div style={{...card, marginBottom:0, flex:1, borderTop:`3px solid ${C.success}`}}><div style={{fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5}}>ACTIVE</div><div style={{fontSize:28, fontWeight:800, color:C.success, margin:'4px 0'}}>{categories.filter(c=>c.isActive).length}</div><div style={{fontSize:11, color:C.gray}}>Shown on home screen</div></div>
-        <div style={{...card, marginBottom:0, flex:1, borderTop:`3px solid ${C.gray}`}}><div style={{fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5}}>HIDDEN</div><div style={{fontSize:28, fontWeight:800, margin:'4px 0'}}>{categories.filter(c=>!c.isActive).length}</div><div style={{fontSize:11, color:C.gray}}>Not shown to customers</div></div>
+        <div style={{...card, marginBottom:0, flex:1, borderTop:`3px solid ${C.primary}`}}><div style={{fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5}}>TOTAL</div><div style={{fontSize:28, fontWeight:800, color:C.primary, margin:'4px 0'}}>{categories.length}</div></div>
+        <div style={{...card, marginBottom:0, flex:1, borderTop:`3px solid ${C.success}`}}><div style={{fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5}}>ACTIVE</div><div style={{fontSize:28, fontWeight:800, color:C.success, margin:'4px 0'}}>{categories.filter(c=>c.isActive).length}</div></div>
+        <div style={{...card, marginBottom:0, flex:1, borderTop:`3px solid ${C.gray}`}}><div style={{fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5}}>HIDDEN</div><div style={{fontSize:28, fontWeight:800, margin:'4px 0'}}>{categories.filter(c=>!c.isActive).length}</div></div>
       </div>
-
       {showForm && (
         <div style={{...card, borderTop:`3px solid ${C.primary}`, marginBottom:24}}>
           <h3 style={{fontWeight:800, fontSize:18, marginBottom:20}}>{editingId ? '✏️ Edit Category' : '➕ New Category'}</h3>
-          <div style={{marginBottom:20}}>
-            <div style={{fontSize:11, fontWeight:700, color:C.gray, letterSpacing:0.5, marginBottom:10}}>PREVIEW</div>
-            <div style={{display:'flex', alignItems:'center', gap:16}}>
-              <div style={{alignItems:'center', display:'flex', flexDirection:'column', gap:8}}>
-                <div style={{width:64, height:64, borderRadius:20, backgroundColor:form.color+'22', border:`2px solid ${form.color}44`, display:'flex', alignItems:'center', justifyContent:'center'}}>
-                  <span style={{fontSize:28}}>{form.emoji}</span>
-                </div>
-                <span style={{fontSize:12, fontWeight:700, color:'#444'}}>{form.name || 'Category'}</span>
-              </div>
-              <div style={{color:C.gray, fontSize:13}}>← This is how it appears on the customer home screen</div>
-            </div>
-          </div>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16}}>
-            <div>
-              <label style={{fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6}}>CATEGORY NAME *</label>
-              <input style={inp} placeholder="e.g. Burgers" value={form.name} onChange={e => setForm({...form, name:e.target.value})} />
-            </div>
-            <div>
-              <label style={{fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6}}>STATUS</label>
-              <select style={{...inp, height:44, cursor:'pointer'}} value={form.isActive} onChange={e => setForm({...form, isActive: e.target.value==='true'})}>
-                <option value="true">● Active — shown to customers</option>
-                <option value="false">○ Hidden — not shown</option>
-              </select>
-            </div>
+            <div><label style={{fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6}}>CATEGORY NAME *</label><input style={inp} placeholder="e.g. Burgers" value={form.name} onChange={e => setForm({...form, name:e.target.value})} /></div>
+            <div><label style={{fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6}}>STATUS</label><select style={{...inp, height:44, cursor:'pointer'}} value={form.isActive} onChange={e => setForm({...form, isActive: e.target.value==='true'})}><option value="true">● Active</option><option value="false">○ Hidden</option></select></div>
           </div>
           <div style={{marginBottom:16}}>
             <label style={{fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:8}}>ACCENT COLOR</label>
             <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
-              {COLOR_OPTIONS.map(color => (
-                <div key={color} onClick={() => setForm({...form, color})} style={{width:32, height:32, borderRadius:8, background:color, cursor:'pointer', border:form.color===color?'3px solid #000':'3px solid transparent'}} />
-              ))}
+              {COLOR_OPTIONS.map(color => (<div key={color} onClick={() => setForm({...form, color})} style={{width:32, height:32, borderRadius:8, background:color, cursor:'pointer', border:form.color===color?'3px solid #000':'3px solid transparent'}} />))}
               <input type="color" value={form.color} onChange={e => setForm({...form, color:e.target.value})} style={{width:32, height:32, borderRadius:8, border:`1px solid ${C.border}`, cursor:'pointer', padding:2}} />
             </div>
           </div>
           <div style={{marginBottom:20}}>
             <label style={{fontSize:12, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:8}}>EMOJI ICON</label>
-            <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-              {EMOJI_OPTIONS.map(e => (
-                <button key={e} onClick={() => setForm({...form, emoji:e})} style={{...btn(form.emoji===e ? C.primary : '#f5f5f5', form.emoji===e ? '#fff' : '#333'), padding:'8px 10px', fontSize:22, borderRadius:10, border:form.emoji===e?'none':`1px solid ${C.border}`, minWidth:46}}>{e}</button>
-              ))}
-            </div>
+            <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>{EMOJI_OPTIONS.map(e => (<button key={e} onClick={() => setForm({...form, emoji:e})} style={{...btn(form.emoji===e ? C.primary : '#f5f5f5', form.emoji===e ? '#fff' : '#333'), padding:'8px 10px', fontSize:22, borderRadius:10, border:form.emoji===e?'none':`1px solid ${C.border}`, minWidth:46}}>{e}</button>))}</div>
           </div>
           <div style={{display:'flex', gap:10}}>
             <button style={{...btn('#f5f5f5'), color:C.gray, padding:'10px 20px'}} onClick={() => { setShowForm(false); resetForm(); }}>Cancel</button>
-            <button style={{...btn(C.primary), padding:'10px 28px', fontSize:14}} onClick={save} disabled={saving}>
-              {saving ? 'Saving...' : editingId ? '✓ Update Category' : '✓ Add Category'}
-            </button>
+            <button style={{...btn(C.primary), padding:'10px 28px', fontSize:14}} onClick={save} disabled={saving}>{saving ? 'Saving...' : editingId ? '✓ Update' : '✓ Add Category'}</button>
           </div>
         </div>
       )}
-
-      {loading ? <div style={{textAlign:'center', padding:60, color:C.gray}}>Loading categories...</div> :
+      {loading ? <div style={{textAlign:'center', padding:60, color:C.gray}}>Loading...</div> :
         categories.length === 0 ? (
-          <div style={{...card, textAlign:'center', padding:60}}>
-            <div style={{fontSize:52, marginBottom:12}}>🏷️</div>
-            <p style={{color:C.gray, fontSize:16, fontWeight:600}}>No categories yet</p>
-            <button style={{...btn(C.primary), marginTop:16, padding:'10px 24px'}} onClick={() => setShowForm(true)}>+ Add First Category</button>
-          </div>
+          <div style={{...card, textAlign:'center', padding:60}}><div style={{fontSize:52, marginBottom:12}}>🏷️</div><p style={{color:C.gray, fontSize:16, fontWeight:600}}>No categories yet</p></div>
         ) : (
           <div style={card}>
-            <div style={{fontSize:13, fontWeight:700, color:C.gray, marginBottom:16}}>{categories.length} CATEGORIES · Use ↑↓ to reorder</div>
             {categories.map((cat, i) => (
               <div key={cat._id} style={{display:'flex', alignItems:'center', gap:14, padding:'12px 0', borderBottom: i < categories.length-1 ? `1px solid ${C.border}` : 'none'}}>
                 <div style={{display:'flex', flexDirection:'column', gap:2}}>
-                  <button onClick={() => moveUp(i)} disabled={i===0} style={{background:'none', border:`1px solid ${C.border}`, borderRadius:6, width:26, height:26, cursor:i===0?'default':'pointer', color:i===0?C.border:'#555', fontWeight:700, fontSize:12, display:'flex', alignItems:'center', justifyContent:'center'}}>↑</button>
-                  <button onClick={() => moveDown(i)} disabled={i===categories.length-1} style={{background:'none', border:`1px solid ${C.border}`, borderRadius:6, width:26, height:26, cursor:i===categories.length-1?'default':'pointer', color:i===categories.length-1?C.border:'#555', fontWeight:700, fontSize:12, display:'flex', alignItems:'center', justifyContent:'center'}}>↓</button>
+                  <button onClick={() => moveUp(i)} disabled={i===0} style={{background:'none', border:`1px solid ${C.border}`, borderRadius:6, width:26, height:26, cursor:i===0?'default':'pointer', color:i===0?C.border:'#555', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center'}}>↑</button>
+                  <button onClick={() => moveDown(i)} disabled={i===categories.length-1} style={{background:'none', border:`1px solid ${C.border}`, borderRadius:6, width:26, height:26, cursor:i===categories.length-1?'default':'pointer', color:i===categories.length-1?C.border:'#555', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center'}}>↓</button>
                 </div>
-                <div style={{width:24, textAlign:'center', fontSize:12, color:C.gray, fontWeight:700}}>#{i+1}</div>
-                <div style={{width:52, height:52, borderRadius:16, backgroundColor:cat.color+'22', border:`2px solid ${cat.color}44`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-                  <span style={{fontSize:24}}>{cat.emoji}</span>
-                </div>
+                <div style={{width:52, height:52, borderRadius:16, backgroundColor:cat.color+'22', border:`2px solid ${cat.color}44`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}><span style={{fontSize:24}}>{cat.emoji}</span></div>
                 <div style={{flex:1}}>
-                  <div style={{display:'flex', alignItems:'center', gap:8}}>
-                    <span style={{fontWeight:800, fontSize:15}}>{cat.name}</span>
-                    <span style={{background: cat.isActive ? C.success+'22' : C.gray+'22', color: cat.isActive ? C.success : C.gray, padding:'2px 8px', borderRadius:10, fontSize:11, fontWeight:700}}>{cat.isActive ? '● Active' : '○ Hidden'}</span>
-                  </div>
-                  <div style={{display:'flex', alignItems:'center', gap:8, marginTop:3}}>
-                    <div style={{width:10, height:10, borderRadius:3, background:cat.color}} />
-                    <span style={{color:C.gray, fontSize:12}}>Searches for "{cat.name}" restaurants</span>
-                  </div>
+                  <div style={{display:'flex', alignItems:'center', gap:8}}><span style={{fontWeight:800, fontSize:15}}>{cat.name}</span><span style={{background: cat.isActive ? C.success+'22' : C.gray+'22', color: cat.isActive ? C.success : C.gray, padding:'2px 8px', borderRadius:10, fontSize:11, fontWeight:700}}>{cat.isActive ? '● Active' : '○ Hidden'}</span></div>
                 </div>
                 <div style={{display:'flex', gap:8}}>
                   <button style={{...btn(cat.isActive ? '#FFF7ED' : '#F0FDF4'), color: cat.isActive ? C.warning : C.success, border:`1px solid ${cat.isActive ? C.warning : C.success}33`, padding:'7px 12px', fontSize:12}} onClick={() => toggleActive(cat)}>{cat.isActive ? 'Hide' : 'Show'}</button>
-                  <button style={{...btn('#EFF6FF'), color:C.primary, border:`1px solid ${C.primary}33`, padding:'7px 12px'}} onClick={() => startEdit(cat)}>✏️ Edit</button>
+                  <button style={{...btn('#EFF6FF'), color:C.primary, border:`1px solid ${C.primary}33`, padding:'7px 12px'}} onClick={() => startEdit(cat)}>✏️</button>
                   <button style={{...btn('#FEF2F2'), color:C.error, border:`1px solid ${C.error}33`, padding:'7px 12px'}} onClick={() => del(cat._id, cat.name)}>Delete</button>
                 </div>
               </div>
@@ -1140,24 +947,33 @@ function Categories() {
 function AppContent() {
   const {user}=useAuth();
   const [page,setPage]=useState('overview');
-  const [counts,setCounts]=useState({w:0,r:0,p:0});
+  const [counts,setCounts]=useState({w:0,r:0,p:0,ri:0});  // ← ri added
+
   useEffect(()=>{
     if(user){
-      api.get('/admin/overview').then(r=>setCounts({w:r.data.pendingWithdrawals||0,r:r.data.pendingRefunds||0,p:r.data.pendingRestaurants||0})).catch(()=>{});
+      api.get('/admin/overview').then(r=>setCounts({
+        w: r.data.pendingWithdrawals||0,
+        r: r.data.pendingRefunds||0,
+        p: r.data.pendingRestaurants||0,
+        ri: r.data.pendingRiders||0,   // ← NEW
+      })).catch(()=>{});
     }
   },[user]);
+
   if(!user) return <Login />;
+
   const pages={
-    overview:<Overview setPage={setPage}/>,
-    restaurants:<Restaurants/>,
-    riders:<Riders/>,
-    users:<Users/>,
-    orders:<Orders/>,
-    withdrawals:<Withdrawals/>,
-    refunds:<Refunds/>,
-    promotions:<Promotions/>,
-    categories:<Categories/>,
+    overview:    <Overview setPage={setPage}/>,
+    restaurants: <Restaurants/>,
+    riders:      <Riders/>,               // ← NEW
+    users:       <Users/>,
+    orders:      <Orders/>,
+    withdrawals: <Withdrawals/>,
+    refunds:     <Refunds/>,
+    promotions:  <Promotions/>,
+    categories:  <Categories/>,
   };
+
   return (
     <div style={{display:'flex',width:'100%'}}>
       <Sidebar page={page} setPage={setPage} counts={counts} />
