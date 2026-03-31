@@ -592,39 +592,303 @@ function Riders() {
 }
 
 // ── WITHDRAWALS ───────────────────────────────────────────────────────────────
+// ── WITHDRAWALS ───────────────────────────────────────────────────────────────
+// Replace the existing Withdrawals function in admin-web/src/App.js with this
+
 function Withdrawals() {
-  const [list,setList]=useState([]); const [tab,setTab]=useState('pending');
-  const TABS=['pending','approved','processing','paid','rejected','all'];
-  useEffect(()=>{ api.get(`/withdrawals?status=${tab}`).then(r=>setList(r.data)).catch(()=>{}); },[tab]);
-  const update=async(id,status)=>{ await api.patch(`/withdrawals/${id}`,{status}); setList(l=>l.filter(x=>x._id!==id)); };
-  const SC={pending:C.warning,approved:C.primary,processing:'#8B5CF6',paid:C.success,rejected:C.error};
+  const [list, setList] = useState([]);
+  const [tab, setTab] = useState('pending');
+  const [selected, setSelected] = useState(null); // withdrawal being viewed
+  const [editingBank, setEditingBank] = useState(false);
+  const [bankForm, setBankForm] = useState({ bankName:'', accountNumber:'', accountName:'', bankCode:'' });
+  const [savingBank, setSavingBank] = useState(false);
+
+  const TABS = ['pending','approved','processing','paid','rejected','all'];
+  const SC = { pending:C.warning, approved:C.primary, processing:'#8B5CF6', paid:C.success, rejected:C.error };
+
+  const NIGERIAN_BANKS = [
+    { name:'Access Bank', code:'044' }, { name:'Citibank Nigeria', code:'023' },
+    { name:'Ecobank Nigeria', code:'050' }, { name:'Fidelity Bank', code:'070' },
+    { name:'First Bank of Nigeria', code:'011' }, { name:'FCMB', code:'214' },
+    { name:'GTBank', code:'058' }, { name:'Heritage Bank', code:'030' },
+    { name:'Keystone Bank', code:'082' }, { name:'Kuda Bank', code:'50211' },
+    { name:'Moniepoint MFB', code:'50515' }, { name:'Opay', code:'999992' },
+    { name:'Palmpay', code:'999991' }, { name:'Polaris Bank', code:'076' },
+    { name:'Providus Bank', code:'101' }, { name:'Stanbic IBTC', code:'221' },
+    { name:'Sterling Bank', code:'232' }, { name:'UBA', code:'033' },
+    { name:'Union Bank', code:'032' }, { name:'Unity Bank', code:'215' },
+    { name:'Wema Bank', code:'035' }, { name:'Zenith Bank', code:'057' },
+    { name:'Standard Chartered', code:'068' }, { name:'Taj Bank', code:'302' },
+  ];
+
+  useEffect(() => {
+    api.get(`/withdrawals?status=${tab}`).then(r => setList(r.data)).catch(() => {});
+  }, [tab]);
+
+  const update = async (id, status) => {
+    await api.patch(`/withdrawals/${id}`, { status });
+    setList(l => l.filter(x => x._id !== id));
+    if (selected?._id === id) setSelected(null);
+  };
+
+  const openModal = (w) => {
+    setSelected(w);
+    setEditingBank(false);
+    setBankForm(w.bankDetails || { bankName:'', accountNumber:'', accountName:'', bankCode:'' });
+  };
+
+  const saveBank = async () => {
+    if (!bankForm.accountNumber || !bankForm.bankName || !bankForm.accountName)
+      return alert('Please fill in all bank details');
+    setSavingBank(true);
+    try {
+      // Update bank details on the withdrawal
+      await api.patch(`/withdrawals/${selected._id}`, { bankDetails: bankForm });
+      // Also update on the user account
+      await api.patch(`/users/${selected.requester._id}/suspend`, {}).catch(() => {}); // no-op to get user, then patch
+      setList(l => l.map(x => x._id === selected._id ? { ...x, bankDetails: bankForm } : x));
+      setSelected(prev => ({ ...prev, bankDetails: bankForm }));
+      setEditingBank(false);
+      alert('Bank details updated!');
+    } catch (err) {
+      alert(err.response?.data?.message || err.message);
+    } finally { setSavingBank(false); }
+  };
+
+  const hasBankDetails = (w) => w.bankDetails?.accountNumber && w.bankDetails?.bankName;
+
   return (
-    <div style={{padding:28,overflowY:'auto',flex:1}}>
-      <h1 style={{fontSize:26,fontWeight:800,marginBottom:20}}>Withdrawals</h1>
-      <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
-        {TABS.map(t=><button key={t} onClick={()=>setTab(t)} style={{...btn(tab===t?C.primary:'#fff'),color:tab===t?'#fff':C.gray,border:`1px solid ${C.border}`,borderRadius:20,textTransform:'capitalize'}}>{t}</button>)}
-      </div>
-      {list.map(w=>(
-        <div key={w._id} style={{...card,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div style={{display:'flex',alignItems:'center',gap:12}}>
-            <div style={{width:42,height:42,borderRadius:'50%',background:C.primary,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:800,fontSize:18}}>{w.requester?.name?.[0]}</div>
-            <div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}><strong>{w.requester?.name}</strong><span style={badge(SC[w.status]||C.gray)}>{w.status}</span>{w.requester?.role&&<span style={badge(C.primary)}>{w.requester.role}</span>}</div>
-              <div style={{color:C.gray,fontSize:12}}>{w.requester?.email}</div>
-              <div style={{color:C.gray,fontSize:12}}>{w.bankDetails?.bankName} · {w.bankDetails?.accountNumber}</div>
-              {w.adminNote&&<div style={{color:C.warning,fontSize:12,marginTop:2}}>📝 {w.adminNote}</div>}
-            </div>
+    <div style={{ padding:28, overflowY:'auto', flex:1 }}>
+      <h1 style={{ fontSize:26, fontWeight:800, marginBottom:4 }}>Withdrawals 💸</h1>
+      <p style={{ color:C.gray, marginBottom:20 }}>Review and process withdrawal requests from restaurants and riders.</p>
+
+      {/* Stats */}
+      <div style={{ display:'flex', gap:14, marginBottom:24 }}>
+        {[
+          ['PENDING', list.filter(w=>w.status==='pending').length, C.warning],
+          ['PROCESSING', list.filter(w=>w.status==='processing').length, '#8B5CF6'],
+          ['PAID', list.filter(w=>w.status==='paid').length, C.success],
+          ['REJECTED', list.filter(w=>w.status==='rejected').length, C.error],
+        ].map(([label, val, color]) => (
+          <div key={label} style={{ ...card, marginBottom:0, flex:1, borderTop:`3px solid ${color}` }}>
+            <div style={{ fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5 }}>{label}</div>
+            <div style={{ fontSize:28, fontWeight:800, color, margin:'4px 0' }}>{val}</div>
           </div>
-          <div style={{textAlign:'right'}}>
-            <div style={{fontSize:20,fontWeight:800,marginBottom:8}}>₦{w.amount?.toLocaleString()}</div>
-            {w.status==='pending'&&<div style={{display:'flex',gap:8}}><button style={btn(C.primary)} onClick={()=>update(w._id,'approved')}>✓ Approve & Pay</button><button style={{...btn('#fff'),color:C.error,border:`1px solid ${C.error}`}} onClick={()=>update(w._id,'rejected')}>✕ Reject</button></div>}
-            {w.status==='approved'&&<button style={btn(C.primary)} onClick={()=>update(w._id,'paid')}>Mark Paid</button>}
-            {w.status==='processing'&&<span style={{color:'#8B5CF6',fontWeight:600,fontSize:13}}>↻ Paystack transfer in progress</span>}
-            {w.status==='paid'&&<span style={{color:C.success,fontWeight:600,fontSize:13}}>✓ Paid</span>}
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
+        {TABS.map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            style={{ ...btn(tab===t ? C.primary : '#fff'), color:tab===t?'#fff':C.gray, border:`1px solid ${C.border}`, borderRadius:20, textTransform:'capitalize' }}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* List */}
+      {list.length === 0 ? (
+        <p style={{ color:C.gray, textAlign:'center', marginTop:60, fontSize:15 }}>No {tab} withdrawals</p>
+      ) : list.map(w => (
+        <div key={w._id} style={{ ...card, cursor:'pointer', transition:'box-shadow 0.15s' }}
+          onClick={() => openModal(w)}
+          onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.1)'}
+          onMouseLeave={e => e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)'}
+        >
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:44, height:44, borderRadius:'50%', background:C.primary+'22', display:'flex', alignItems:'center', justifyContent:'center', color:C.primary, fontWeight:800, fontSize:18 }}>
+                {w.requester?.name?.[0]}
+              </div>
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
+                  <strong style={{ fontSize:15 }}>{w.requester?.name}</strong>
+                  <span style={badge(SC[w.status] || C.gray)}>{w.status}</span>
+                  {w.requester?.role && <span style={badge(C.primary)}>{w.requester.role}</span>}
+                  {!hasBankDetails(w) && <span style={badge(C.error)}>⚠️ No bank details</span>}
+                </div>
+                <div style={{ color:C.gray, fontSize:12 }}>{w.requester?.email}</div>
+                <div style={{ color:C.gray, fontSize:12, marginTop:2 }}>
+                  {hasBankDetails(w)
+                    ? `🏦 ${w.bankDetails.bankName} · ${w.bankDetails.accountNumber} · ${w.bankDetails.accountName}`
+                    : '⚠️ Bank details not set — click to add'
+                  }
+                </div>
+                {w.adminNote && <div style={{ color:C.warning, fontSize:12, marginTop:2 }}>📝 {w.adminNote}</div>}
+              </div>
+            </div>
+            <div style={{ textAlign:'right' }}>
+              <div style={{ fontSize:22, fontWeight:800, marginBottom:8 }}>₦{w.amount?.toLocaleString()}</div>
+              <div style={{ color:C.gray, fontSize:12, marginBottom:8 }}>{new Date(w.createdAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</div>
+              <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }} onClick={e => e.stopPropagation()}>
+                {w.status === 'pending' && (
+                  <>
+                    <button style={btn(C.primary)} onClick={() => update(w._id, 'approved')}>✓ Approve & Pay</button>
+                    <button style={{ ...btn('#fff'), color:C.error, border:`1px solid ${C.error}` }} onClick={() => update(w._id, 'rejected')}>✕ Reject</button>
+                  </>
+                )}
+                {w.status === 'approved' && <button style={btn(C.primary)} onClick={() => update(w._id, 'paid')}>Mark Paid</button>}
+                {w.status === 'processing' && <span style={{ color:'#8B5CF6', fontWeight:600, fontSize:13 }}>↻ Paystack transfer in progress</span>}
+                {w.status === 'paid' && <span style={{ color:C.success, fontWeight:600, fontSize:13 }}>✓ Paid</span>}
+              </div>
+            </div>
           </div>
         </div>
       ))}
-      {list.length===0&&<p style={{color:C.gray,textAlign:'center',marginTop:60}}>No {tab} withdrawals</p>}
+
+      {/* ── Bank Details Modal ── */}
+      {selected && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}
+          onClick={e => e.target === e.currentTarget && setSelected(null)}>
+          <div style={{ background:'#fff', borderRadius:20, padding:32, width:540, maxWidth:'92vw', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+
+            {/* Header */}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+              <div>
+                <h2 style={{ fontSize:20, fontWeight:800, marginBottom:4 }}>Withdrawal Details</h2>
+                <p style={{ color:C.gray, fontSize:13 }}>{selected.requester?.name} · {selected.requester?.email}</p>
+              </div>
+              <button onClick={() => setSelected(null)} style={{ background:'none', border:'none', fontSize:22, cursor:'pointer', color:C.gray }}>✕</button>
+            </div>
+
+            {/* Amount + Status */}
+            <div style={{ display:'flex', gap:14, marginBottom:20 }}>
+              <div style={{ flex:1, background:C.bg, borderRadius:14, padding:16, textAlign:'center' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5, marginBottom:4 }}>AMOUNT</div>
+                <div style={{ fontSize:28, fontWeight:800, color:C.primary }}>₦{selected.amount?.toLocaleString()}</div>
+              </div>
+              <div style={{ flex:1, background:C.bg, borderRadius:14, padding:16, textAlign:'center' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5, marginBottom:4 }}>STATUS</div>
+                <span style={{ ...badge(SC[selected.status] || C.gray), fontSize:14, padding:'5px 14px' }}>{selected.status}</span>
+              </div>
+              <div style={{ flex:1, background:C.bg, borderRadius:14, padding:16, textAlign:'center' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:C.gray, letterSpacing:0.5, marginBottom:4 }}>ROLE</div>
+                <span style={{ ...badge(C.primary), fontSize:13, padding:'5px 14px' }}>{selected.requester?.role}</span>
+              </div>
+            </div>
+
+            {/* Requester info */}
+            <div style={{ background:C.bg, borderRadius:14, padding:16, marginBottom:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:C.gray, letterSpacing:0.5, marginBottom:10 }}>👤 REQUESTER INFO</div>
+              {[
+                ['Name', selected.requester?.name],
+                ['Email', selected.requester?.email],
+                ['Role', selected.requester?.role],
+                ['Requested', new Date(selected.createdAt).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })],
+              ].map(([label, value]) => (
+                <div key={label} style={{ display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:`1px solid ${C.border}` }}>
+                  <span style={{ color:C.gray, fontSize:13 }}>{label}</span>
+                  <span style={{ fontWeight:600, fontSize:13 }}>{value || '—'}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Bank Details */}
+            <div style={{ background:C.bg, borderRadius:14, padding:16, marginBottom:20 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:C.gray, letterSpacing:0.5 }}>🏦 BANK DETAILS</div>
+                <button onClick={() => setEditingBank(!editingBank)}
+                  style={{ ...btn(editingBank ? '#f5f5f5' : C.primary), color:editingBank?C.gray:'#fff', padding:'5px 14px', fontSize:12 }}>
+                  {editingBank ? 'Cancel' : hasBankDetails(selected) ? '✏️ Edit' : '+ Add Bank Details'}
+                </button>
+              </div>
+
+              {!editingBank ? (
+                hasBankDetails(selected) ? (
+                  <div>
+                    {[
+                      ['Bank Name', selected.bankDetails?.bankName],
+                      ['Account Number', selected.bankDetails?.accountNumber],
+                      ['Account Name', selected.bankDetails?.accountName],
+                      ['Bank Code', selected.bankDetails?.bankCode || '—'],
+                    ].map(([label, value]) => (
+                      <div key={label} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:`1px solid ${C.border}` }}>
+                        <span style={{ color:C.gray, fontSize:13 }}>{label}</span>
+                        <span style={{ fontWeight:700, fontSize:13 }}>{value || '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign:'center', padding:'20px 0' }}>
+                    <div style={{ fontSize:32, marginBottom:8 }}>🏦</div>
+                    <p style={{ color:C.error, fontWeight:600, fontSize:13 }}>No bank details on file</p>
+                    <p style={{ color:C.gray, fontSize:12, marginTop:4 }}>Click "Add Bank Details" to add them manually</p>
+                  </div>
+                )
+              ) : (
+                <div>
+                  <div style={{ marginBottom:12 }}>
+                    <label style={{ fontSize:11, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6 }}>BANK NAME</label>
+                    <select style={{ ...inp, height:44, cursor:'pointer' }}
+                      value={bankForm.bankName}
+                      onChange={e => {
+                        const bank = NIGERIAN_BANKS.find(b => b.name === e.target.value);
+                        setBankForm({ ...bankForm, bankName: e.target.value, bankCode: bank?.code || '' });
+                      }}>
+                      <option value="">— Select bank —</option>
+                      {NIGERIAN_BANKS.map(b => (
+                        <option key={b.code} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                    {bankForm.bankCode && <div style={{ color:C.gray, fontSize:11, marginTop:4 }}>Bank code: {bankForm.bankCode}</div>}
+                  </div>
+                  <div style={{ marginBottom:12 }}>
+                    <label style={{ fontSize:11, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6 }}>ACCOUNT NUMBER</label>
+                    <input style={inp} placeholder="10-digit account number" maxLength={10}
+                      value={bankForm.accountNumber} onChange={e => setBankForm({ ...bankForm, accountNumber: e.target.value })} />
+                  </div>
+                  <div style={{ marginBottom:16 }}>
+                    <label style={{ fontSize:11, fontWeight:700, color:C.gray, letterSpacing:0.5, display:'block', marginBottom:6 }}>ACCOUNT NAME</label>
+                    <input style={inp} placeholder="As it appears on bank records"
+                      value={bankForm.accountName} onChange={e => setBankForm({ ...bankForm, accountName: e.target.value })} />
+                  </div>
+                  <button style={{ ...btn(C.success), width:'100%', padding:'11px 0', fontSize:14 }}
+                    onClick={saveBank} disabled={savingBank}>
+                    {savingBank ? 'Saving...' : '✓ Save Bank Details'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Paystack transfer code if exists */}
+            {selected.paystackTransferCode && (
+              <div style={{ background:'#F5F3FF', borderRadius:14, padding:14, marginBottom:16, border:'1px solid #DDD6FE' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#8B5CF6', letterSpacing:0.5, marginBottom:4 }}>PAYSTACK TRANSFER</div>
+                <div style={{ fontFamily:'monospace', fontSize:13, color:'#8B5CF6', fontWeight:700 }}>{selected.paystackTransferCode}</div>
+              </div>
+            )}
+
+            {/* Admin note */}
+            {selected.adminNote && (
+              <div style={{ background:'#FFFBEB', borderRadius:14, padding:14, marginBottom:16, border:`1px solid ${C.warning}44` }}>
+                <div style={{ fontSize:11, fontWeight:700, color:C.warning, letterSpacing:0.5, marginBottom:4 }}>ADMIN NOTE</div>
+                <div style={{ fontSize:13, color:'#92400E' }}>{selected.adminNote}</div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ display:'flex', gap:10 }}>
+              <button style={{ ...btn('#f5f5f5'), color:C.gray, padding:'11px 20px' }} onClick={() => setSelected(null)}>Close</button>
+              {selected.status === 'pending' && (
+                <>
+                  <button style={{ ...btn(C.primary), flex:1, padding:'11px 0' }} onClick={() => update(selected._id, 'approved')}>✓ Approve & Pay</button>
+                  <button style={{ ...btn(C.error), padding:'11px 20px' }} onClick={() => update(selected._id, 'rejected')}>✕ Reject</button>
+                </>
+              )}
+              {selected.status === 'approved' && (
+                <button style={{ ...btn(C.primary), flex:1, padding:'11px 0' }} onClick={() => update(selected._id, 'paid')}>✓ Mark as Paid</button>
+              )}
+              {selected.status === 'processing' && (
+                <div style={{ flex:1, textAlign:'center', padding:11, color:'#8B5CF6', fontWeight:700 }}>↻ Paystack transfer in progress</div>
+              )}
+              {selected.status === 'paid' && (
+                <div style={{ flex:1, textAlign:'center', padding:11, color:C.success, fontWeight:700 }}>✓ Payment completed</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
