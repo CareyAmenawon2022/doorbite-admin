@@ -675,9 +675,18 @@ function Promotions() {
   const [form,setForm]=useState({title:'',subtitle:'',bgColor:'#FF6B2C',emoji:'🔥',ctaText:'Order Now',isActive:true,linkRestaurantId:''});
   const COLORS_LIST=['#FF6B2C','#8B5CF6','#22C55E','#3B82F6','#EF4444','#F59E0B','#06B6D4','#EC4899','#1A1A1A','#0F172A'];
   const EMOJIS=['🔥','🎉','⚡','🍕','🎁','💥','🚀','🍔','🛵','🎊','🏷️','💫'];
-  useEffect(()=>{ api.get('/promotions/all').then(r=>setPromos(r.data)).catch(()=>api.get('/promotions').then(r=>setPromos(r.data)).catch(()=>{})); api.get('/restaurants').then(r=>setRestaurants(r.data)).catch(()=>{}); },[]);
+  useEffect(()=>{
+    api.get('/promotions/all').then(r=>setPromos(r.data)).catch(()=>api.get('/promotions').then(r=>setPromos(r.data)).catch(()=>{}));
+    api.get('/restaurants').then(r=>setRestaurants(r.data)).catch(()=>{});
+  },[]);
   const resetForm=()=>setForm({title:'',subtitle:'',bgColor:'#FF6B2C',emoji:'🔥',ctaText:'Order Now',isActive:true,linkRestaurantId:''});
-  const save=async()=>{ if(!form.title) return alert('Title is required'); setSaving(true); try{ const {data}=await api.post('/promotions',form); setPromos(prev=>[data,...prev]); resetForm(); setShowForm(false); }catch(err){ alert(err.response?.data?.message||err.message); }finally{ setSaving(false); } };
+  const save=async()=>{
+    if(!form.title) return alert('Title is required');
+    setSaving(true);
+    try{ const {data}=await api.post('/promotions',form); setPromos(prev=>[data,...prev]); resetForm(); setShowForm(false); }
+    catch(err){ alert(err.response?.data?.message||err.message); }
+    finally{ setSaving(false); }
+  };
   const toggle=async(id,isActive)=>{ await api.patch(`/promotions/${id}`,{isActive:!isActive}); setPromos(prev=>prev.map(p=>p._id===id?{...p,isActive:!isActive}:p)); };
   const del=async(id)=>{ if(!window.confirm('Delete this promotion?')) return; await api.delete(`/promotions/${id}`); setPromos(prev=>prev.filter(p=>p._id!==id)); };
   const linkedRestaurant=restaurants.find(r=>r._id===form.linkRestaurantId);
@@ -698,7 +707,13 @@ function Promotions() {
           <div style={{marginBottom:20}}>
             <div style={{fontSize:11,fontWeight:700,color:C.gray,letterSpacing:0.5,marginBottom:8}}>LIVE PREVIEW</div>
             <div style={{borderRadius:16,padding:22,background:form.bgColor,display:'flex',alignItems:'center',justifyContent:'space-between',minHeight:120,maxWidth:520}}>
-              <div><div style={{fontSize:30,marginBottom:6}}>{form.emoji}</div><div style={{color:'#fff',fontWeight:800,fontSize:22,marginBottom:4}}>{form.title||'Banner Title'}</div>{form.subtitle&&<div style={{color:'rgba(255,255,255,0.85)',fontSize:14,marginBottom:10}}>{form.subtitle}</div>}<div style={{background:'rgba(255,255,255,0.25)',color:'#fff',padding:'7px 18px',borderRadius:20,fontSize:13,fontWeight:800,display:'inline-block'}}>{form.ctaText}</div>{linkedRestaurant&&<div style={{color:'rgba(255,255,255,0.6)',fontSize:11,marginTop:6}}>📍 {linkedRestaurant.name}</div>}</div>
+              <div>
+                <div style={{fontSize:30,marginBottom:6}}>{form.emoji}</div>
+                <div style={{color:'#fff',fontWeight:800,fontSize:22,marginBottom:4}}>{form.title||'Banner Title'}</div>
+                {form.subtitle&&<div style={{color:'rgba(255,255,255,0.85)',fontSize:14,marginBottom:10}}>{form.subtitle}</div>}
+                <div style={{background:'rgba(255,255,255,0.25)',color:'#fff',padding:'7px 18px',borderRadius:20,fontSize:13,fontWeight:800,display:'inline-block'}}>{form.ctaText}</div>
+                {linkedRestaurant&&<div style={{color:'rgba(255,255,255,0.6)',fontSize:11,marginTop:6}}>📍 {linkedRestaurant.name}</div>}
+              </div>
               <div style={{fontSize:72,opacity:0.18,marginLeft:16}}>{form.emoji}</div>
             </div>
           </div>
@@ -708,26 +723,58 @@ function Promotions() {
             <div><label style={{fontSize:12,fontWeight:700,color:C.gray,letterSpacing:0.5,display:'block',marginBottom:6}}>BUTTON TEXT</label><input style={inp} placeholder="e.g. Order Now" value={form.ctaText} onChange={e=>setForm({...form,ctaText:e.target.value})} /></div>
             <div><label style={{fontSize:12,fontWeight:700,color:C.gray,letterSpacing:0.5,display:'block',marginBottom:6}}>STATUS</label><select style={{...inp,height:44,cursor:'pointer'}} value={form.isActive} onChange={e=>setForm({...form,isActive:e.target.value==='true'})}><option value="true">● Live</option><option value="false">○ Draft</option></select></div>
           </div>
-          <div style={{background:'#F0FDF4',borderRadius:12,padding:16,border:'1px solid #BBF7D0',marginBottom:16}}>
+          <div style={{background:'#F0FDF4',borderRadius:12,padding:16,border:`1px solid #BBF7D0`,marginBottom:16}}>
             <label style={{fontSize:12,fontWeight:700,color:'#15803D',letterSpacing:0.5,display:'block',marginBottom:4}}>🏪 LINK TO RESTAURANT</label>
             <select style={{...inp,height:46,cursor:'pointer',background:'#fff',fontWeight:600}} value={form.linkRestaurantId} onChange={e=>setForm({...form,linkRestaurantId:e.target.value})}>
               <option value="">— No restaurant (display only) —</option>
               {restaurants.map(r=><option key={r._id} value={r._id}>{r.name}{r.cuisineType?` · ${r.cuisineType}`:''} {r.isOpen?'🟢':'🔴'}</option>)}
             </select>
           </div>
-          <div style={{marginBottom:16}}><label style={{fontSize:12,fontWeight:700,color:C.gray,letterSpacing:0.5,display:'block',marginBottom:8}}>EMOJI</label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{EMOJIS.map(e=><button key={e} onClick={()=>setForm({...form,emoji:e})} style={{...btn(form.emoji===e?C.primary:'#f5f5f5',form.emoji===e?'#fff':'#333'),padding:'8px 12px',fontSize:20,borderRadius:10,border:form.emoji===e?'none':`1px solid ${C.border}`}}>{e}</button>)}</div></div>
-          <div style={{marginBottom:20}}><label style={{fontSize:12,fontWeight:700,color:C.gray,letterSpacing:0.5,display:'block',marginBottom:8}}>BACKGROUND COLOR</label><div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>{COLORS_LIST.map(color=><div key={color} onClick={()=>setForm({...form,bgColor:color})} style={{width:40,height:40,borderRadius:10,background:color,cursor:'pointer',border:form.bgColor===color?'3px solid #000':'3px solid transparent'}} />)<input type="color" value={form.bgColor} onChange={e=>setForm({...form,bgColor:e.target.value})} style={{width:40,height:40,borderRadius:10,border:`1px solid ${C.border}`,cursor:'pointer',padding:2}} /></div></div>
-          <div style={{display:'flex',gap:10}}><button style={{...btn('#f5f5f5'),color:C.gray,padding:'10px 20px'}} onClick={()=>{ setShowForm(false); resetForm(); }}>Cancel</button><button style={{...btn(C.primary),padding:'10px 24px',fontSize:14}} onClick={save} disabled={saving}>{saving?'Publishing...':'🚀 Publish Banner'}</button></div>
+          <div style={{marginBottom:16}}>
+            <label style={{fontSize:12,fontWeight:700,color:C.gray,letterSpacing:0.5,display:'block',marginBottom:8}}>EMOJI</label>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{EMOJIS.map(e=><button key={e} onClick={()=>setForm({...form,emoji:e})} style={{...btn(form.emoji===e?C.primary:'#f5f5f5',form.emoji===e?'#fff':'#333'),padding:'8px 12px',fontSize:20,borderRadius:10,border:form.emoji===e?'none':`1px solid ${C.border}`}}>{e}</button>)}</div>
+          </div>
+          <div style={{marginBottom:20}}>
+            <label style={{fontSize:12,fontWeight:700,color:C.gray,letterSpacing:0.5,display:'block',marginBottom:8}}>BACKGROUND COLOR</label>
+            <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+              {COLORS_LIST.map(color=><div key={color} onClick={()=>setForm({...form,bgColor:color})} style={{width:40,height:40,borderRadius:10,background:color,cursor:'pointer',border:form.bgColor===color?'3px solid #000':'3px solid transparent'}} />)}
+              <input type="color" value={form.bgColor} onChange={e=>setForm({...form,bgColor:e.target.value})} style={{width:40,height:40,borderRadius:10,border:`1px solid ${C.border}`,cursor:'pointer',padding:2}} />
+            </div>
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <button style={{...btn('#f5f5f5'),color:C.gray,padding:'10px 20px'}} onClick={()=>{ setShowForm(false); resetForm(); }}>Cancel</button>
+            <button style={{...btn(C.primary),padding:'10px 24px',fontSize:14}} onClick={save} disabled={saving}>{saving?'Publishing...':'🚀 Publish Banner'}</button>
+          </div>
         </div>
       )}
-      {promos.length===0&&!showForm?(<div style={{...card,textAlign:'center',padding:60}}><div style={{fontSize:52,marginBottom:12}}>📢</div><p style={{color:C.gray,fontSize:16,fontWeight:600}}>No promotions yet</p><button style={{...btn(C.primary),marginTop:16,padding:'10px 24px'}} onClick={()=>setShowForm(true)}>+ Create First Banner</button></div>):
-      promos.map(p=>{ const linkedR=restaurants.find(r=>r._id===p.linkRestaurantId); return(
-        <div key={p._id} style={{...card,display:'flex',gap:16,alignItems:'center'}}>
-          <div style={{width:210,minHeight:100,borderRadius:12,background:p.bgColor,padding:14,flexShrink:0,display:'flex',flexDirection:'column',justifyContent:'center',overflow:'hidden'}}><div style={{fontSize:22,marginBottom:4}}>{p.emoji}</div><div style={{color:'#fff',fontWeight:800,fontSize:14,marginBottom:2}}>{p.title}</div>{p.subtitle&&<div style={{color:'rgba(255,255,255,0.8)',fontSize:11,marginBottom:4}}>{p.subtitle}</div>}<div style={{background:'rgba(255,255,255,0.2)',color:'#fff',fontSize:11,fontWeight:700,padding:'3px 8px',borderRadius:10,alignSelf:'flex-start'}}>{p.ctaText}</div></div>
-          <div style={{flex:1}}><div style={{fontWeight:800,fontSize:16,marginBottom:2}}>{p.title}</div>{p.subtitle&&<div style={{color:C.gray,fontSize:13,marginBottom:6}}>{p.subtitle}</div>}{linkedR?(<div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#F0FDF4',padding:'5px 12px',borderRadius:20,border:'1px solid #BBF7D0',marginBottom:6}}><span>🏪</span><span style={{color:'#15803D',fontSize:12,fontWeight:700}}>→ {linkedR.name}</span></div>):(<div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#F5F5F5',padding:'5px 12px',borderRadius:20,marginBottom:6}}><span style={{color:C.gray,fontSize:12}}>Display only</span></div>)}<div style={{color:C.gray,fontSize:12}}>Created {new Date(p.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div></div>
-          <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-end',flexShrink:0}}><span style={{background:p.isActive?C.success+'22':C.gray+'22',color:p.isActive?C.success:C.gray,padding:'5px 14px',borderRadius:20,fontSize:12,fontWeight:700}}>{p.isActive?'● Live':'○ Paused'}</span><div style={{display:'flex',gap:8}}><button style={btn(p.isActive?C.warning:C.success)} onClick={()=>toggle(p._id,p.isActive)}>{p.isActive?'Pause':'Activate'}</button><button style={btn(C.error)} onClick={()=>del(p._id)}>Delete</button></div></div>
-        </div>
-      );})}
+      {promos.length===0&&!showForm?(
+        <div style={{...card,textAlign:'center',padding:60}}><div style={{fontSize:52,marginBottom:12}}>📢</div><p style={{color:C.gray,fontSize:16,fontWeight:600}}>No promotions yet</p><button style={{...btn(C.primary),marginTop:16,padding:'10px 24px'}} onClick={()=>setShowForm(true)}>+ Create First Banner</button></div>
+      ):promos.map(p=>{
+        const linkedR=restaurants.find(r=>r._id===p.linkRestaurantId);
+        return(
+          <div key={p._id} style={{...card,display:'flex',gap:16,alignItems:'center'}}>
+            <div style={{width:210,minHeight:100,borderRadius:12,background:p.bgColor,padding:14,flexShrink:0,display:'flex',flexDirection:'column',justifyContent:'center',overflow:'hidden'}}>
+              <div style={{fontSize:22,marginBottom:4}}>{p.emoji}</div>
+              <div style={{color:'#fff',fontWeight:800,fontSize:14,marginBottom:2}}>{p.title}</div>
+              {p.subtitle&&<div style={{color:'rgba(255,255,255,0.8)',fontSize:11,marginBottom:4}}>{p.subtitle}</div>}
+              <div style={{background:'rgba(255,255,255,0.2)',color:'#fff',fontSize:11,fontWeight:700,padding:'3px 8px',borderRadius:10,alignSelf:'flex-start'}}>{p.ctaText}</div>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:800,fontSize:16,marginBottom:2}}>{p.title}</div>
+              {p.subtitle&&<div style={{color:C.gray,fontSize:13,marginBottom:6}}>{p.subtitle}</div>}
+              {linkedR?(<div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#F0FDF4',padding:'5px 12px',borderRadius:20,border:'1px solid #BBF7D0',marginBottom:6}}><span>🏪</span><span style={{color:'#15803D',fontSize:12,fontWeight:700}}>→ {linkedR.name}</span></div>):(<div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#F5F5F5',padding:'5px 12px',borderRadius:20,marginBottom:6}}><span style={{color:C.gray,fontSize:12}}>Display only</span></div>)}
+              <div style={{color:C.gray,fontSize:12}}>Created {new Date(p.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-end',flexShrink:0}}>
+              <span style={{background:p.isActive?C.success+'22':C.gray+'22',color:p.isActive?C.success:C.gray,padding:'5px 14px',borderRadius:20,fontSize:12,fontWeight:700}}>{p.isActive?'● Live':'○ Paused'}</span>
+              <div style={{display:'flex',gap:8}}>
+                <button style={btn(p.isActive?C.warning:C.success)} onClick={()=>toggle(p._id,p.isActive)}>{p.isActive?'Pause':'Activate'}</button>
+                <button style={btn(C.error)} onClick={()=>del(p._id)}>Delete</button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
