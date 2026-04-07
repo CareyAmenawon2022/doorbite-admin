@@ -25,7 +25,7 @@ function AuthProvider({children}) {
 
 function Login() {
   const {login}=useAuth();
-  const [email,setEmail]=useState('admin@quickbite.ng'); const [password,setPassword]=useState(''); const [error,setError]=useState(''); const [loading,setLoading]=useState(false);
+  const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [error,setError]=useState(''); const [loading,setLoading]=useState(false);
   const handle=async e=>{ e.preventDefault(); setLoading(true); setError(''); try{ await login(email,password); }catch(err){ setError(err.response?.data?.message||err.message); }finally{ setLoading(false); } };
   return (
     <div style={{display:'flex',height:'100vh'}}>
